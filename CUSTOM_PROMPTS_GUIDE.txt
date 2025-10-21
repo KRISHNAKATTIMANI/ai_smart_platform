@@ -1,0 +1,177 @@
+=============================================================================
+                    ✅ FIXED: CUSTOM QUESTIONS SUPPORT
+=============================================================================
+
+NOW YOU CAN:
+✅ Upload ANY image
+✅ Ask CUSTOM questions about it
+✅ Get AI to answer questions IN the image
+✅ Request specific analysis
+
+=============================================================================
+                         HOW IT WORKS NOW
+=============================================================================
+
+EXAMPLE 1: Image with Questions
+--------------------------------
+Your Image: Screenshot with questions like:
+   "1. Who is the current captain of the Indian cricket team?"
+   "2. Which country won the last FIFA World Cup?"
+
+Your Prompt: "Answer the questions shown in this image"
+
+AI Response: 
+   "1. The current captain is Rohit Sharma
+    2. Argentina won the last FIFA World Cup in 2022"
+
+EXAMPLE 2: Explain Content
+---------------------------
+Your Image: Complex diagram or chart
+
+Your Prompt: "Explain what this diagram shows"
+
+AI Response: Detailed explanation of the diagram
+
+EXAMPLE 3: Extract Text
+------------------------
+Your Image: Document or sign
+
+Your Prompt: "Extract all text from this image"
+
+AI Response: All readable text listed
+
+EXAMPLE 4: Custom Question
+---------------------------
+Your Image: Any photo
+
+Your Prompt: "What time of day was this taken and why?"
+
+AI Response: Analysis based on lighting, shadows, etc.
+
+=============================================================================
+                         GUI VERSION (EASIEST!)
+=============================================================================
+
+Run:
+    python image_analyzer_ui.py
+
+Steps:
+    1. Click "📁 Select Image File" → Choose your image
+    
+    2. In the text box "What do you want to know about this image?"
+       Type your question:
+       - "Answer the questions in this image"
+       - "Explain this concept"
+       - "What is shown here?"
+       - "Extract all text"
+       - ANY custom question!
+    
+    3. OR click Quick Prompt buttons:
+       📝 Answer Questions
+       📖 Explain  
+       🔍 Describe
+       📊 Extract Text
+    
+    4. Choose API: Gemini or OpenAI
+    
+    5. Click "🔍 Analyze Image"
+    
+    6. Read AI's answer!
+
+=============================================================================
+                       CLI VERSION (TERMINAL)
+=============================================================================
+
+Run:
+    python image_analyzer_cli.py
+
+Steps:
+    1. Enter image path
+    2. Choose API (1 or 2)
+    3. Type your custom question or press Enter for general analysis
+    4. Get answer!
+
+Example:
+    Enter the path to your image file: questions.jpg
+    Enter your choice (1 or 2): 1
+    Your question: Answer all the questions visible in this image
+    [AI provides answers]
+
+=============================================================================
+                      QUICK PROMPT EXAMPLES
+=============================================================================
+
+For Quiz/Test Images:
+  → "Answer the questions shown in this image"
+  → "Solve the problems in this image"
+  → "What are the correct answers?"
+
+For Educational Content:
+  → "Explain this concept to me"
+  → "What is this diagram showing?"
+  → "Teach me about what's in this image"
+
+For Documents:
+  → "Extract all text from this image"
+  → "Summarize this document"
+  → "What information is shown here?"
+
+For Photos:
+  → "Describe everything in detail"
+  → "What is happening in this image?"
+  → "Identify the objects shown"
+
+For Memes/Screenshots:
+  → "Explain this meme"
+  → "What does this tweet say?"
+  → "Translate the text in this image"
+
+=============================================================================
+                        REAL EXAMPLE
+=============================================================================
+
+You uploaded: cricket_question.jpg (containing your quiz questions)
+
+Prompt: "Answer these questions accurately"
+
+Gemini Response:
+"1. The current captain of the Indian cricket team is Rohit Sharma. 
+    He has been leading the team since 2022 in ODIs and T20Is.
+
+ 2. Argentina won the last FIFA World Cup in 2022, held in Qatar. 
+    They defeated France in the final on penalties after a 3-3 draw."
+
+=============================================================================
+                         KEY FEATURES
+=============================================================================
+
+✅ Custom Prompts - Ask ANYTHING about the image
+✅ Quick Buttons - Common prompts with one click
+✅ Answer Questions - AI reads and answers questions IN images
+✅ Extract Text - Get all text from screenshots, documents
+✅ Explain Content - Understand complex diagrams, charts
+✅ Flexible - Use for homework, work, research, fun!
+
+=============================================================================
+                       PERFECT FOR
+=============================================================================
+
+📚 Students: Upload homework questions, get explanations
+💼 Professionals: Analyze charts, extract info from screenshots
+📖 Learners: Understand complex diagrams and concepts
+🔍 Researchers: Quick analysis of visual data
+📝 Everyone: Any question about any image!
+
+=============================================================================
+                         RUN IT NOW!
+=============================================================================
+
+GUI (Recommended):
+    python image_analyzer_ui.py
+
+CLI (Simple):
+    python image_analyzer_cli.py
+
+Try uploading the cricket questions image you showed me! 🏏
+
+=============================================================================

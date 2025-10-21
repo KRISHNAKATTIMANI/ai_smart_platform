@@ -1,0 +1,110 @@
+═══════════════════════════════════════════════════════════════
+               TROUBLESHOOTING GUIDE
+═══════════════════════════════════════════════════════════════
+
+✅ API TEST RESULTS:
+   • Gemini API: WORKING ✓
+   • OpenAI API: Rate Limited (too many requests) ✗
+
+═══════════════════════════════════════════════════════════════
+                    SOLUTION
+═══════════════════════════════════════════════════════════════
+
+USE GEMINI API (It's working perfectly!)
+
+═══════════════════════════════════════════════════════════════
+              HOW TO USE THE APP CORRECTLY
+═══════════════════════════════════════════════════════════════
+
+1. RUN THE APP:
+   $env:GEMINI_API_KEY="AIzaSyC_OOXj1s0zACXRDAEBZs7hfmGb-4hGMnI"
+   python image_analyzer_ui.py
+
+2. UPLOAD IMAGE:
+   - Click "📁 Select Image File"
+   - Choose your image (not too large - under 5MB is best)
+
+3. ENTER YOUR QUESTION:
+   - In the text box, type:
+     "Answer the questions shown in this image"
+   - Or click the "📝 Answer Questions" button
+
+4. SELECT GEMINI:
+   - Make sure "Google Gemini" radio button is selected
+   - DO NOT use OpenAI (it's rate limited)
+
+5. CLICK ANALYZE:
+   - Click "🔍 Analyze Image" button
+   - WAIT 10-30 seconds (be patient!)
+   - Don't click multiple times
+
+6. READ RESULT:
+   - Answer will appear in the text box below
+
+═══════════════════════════════════════════════════════════════
+                    COMMON ISSUES & FIXES
+═══════════════════════════════════════════════════════════════
+
+ISSUE: "Nothing happens after clicking Analyze"
+FIX: Wait longer! It can take 10-30 seconds
+
+ISSUE: "Error message appears"
+FIX: 
+  - Check internet connection
+  - Make sure image is not too large (< 5MB)
+  - Try a different image
+  - Make sure Gemini is selected (not OpenAI)
+
+ISSUE: "App freezes"
+FIX: 
+  - Close and restart the app
+  - Use smaller image
+  - Check internet connection
+
+ISSUE: "Can't see the window"
+FIX:
+  - Check taskbar
+  - Press Alt+Tab to find it
+  - It might be behind other windows
+
+═══════════════════════════════════════════════════════════════
+                  ALTERNATIVE: USE CLI
+═══════════════════════════════════════════════════════════════
+
+If GUI doesn't work, try the command-line version:
+
+$env:GEMINI_API_KEY="AIzaSyC_OOXj1s0zACXRDAEBZs7hfmGb-4hGMnI"
+python image_analyzer_cli.py
+
+Then:
+1. Enter image path
+2. Choose "1" for Gemini
+3. Type your question
+4. Get answer!
+
+═══════════════════════════════════════════════════════════════
+              WHAT THOSE WARNINGS MEAN
+═══════════════════════════════════════════════════════════════
+
+"WARNING: All log messages before absl::InitializeLog()"
+"E0000... ALTS creds ignored. Not running on GCP"
+
+→ These are NORMAL and HARMLESS!
+→ Google's internal messages
+→ Your app works fine despite these warnings
+→ Just ignore them
+
+═══════════════════════════════════════════════════════════════
+                    TIPS FOR SUCCESS
+═══════════════════════════════════════════════════════════════
+
+✓ Use images under 5MB
+✓ Use JPEG or PNG format
+✓ Be patient - wait 10-30 seconds
+✓ Use Gemini API (not OpenAI)
+✓ Make sure image is clear and readable
+✓ Use specific questions like:
+  - "Answer the questions in this image"
+  - "What does question 1 and 2 say and what are the answers?"
+
+═══════════════════════════════════════════════════════════════

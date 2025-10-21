@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Assistant - ChatGPT Style</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes typing {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+        .typing-dot {
+            animation: typing 1.4s infinite;
+        }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        
+        .chat-container {
+            height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+        
+        .message-bubble {
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        
+        .sidebar {
+            width: 260px;
+            transition: transform 0.3s ease;
+        }
+        
+        .sidebar.hidden {
+            transform: translateX(-100%);
+        }
+        
+        @media (max-width: 768px) {
+            .message-bubble {
+                max-width: 90%;
+            }
+            .sidebar {
+                position: fixed;
+                z-index: 50;
+                height: 100vh;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen flex">
+    
+    <!-- Sidebar -->
+    <div id="sidebar" class="sidebar bg-gray-900 text-white p-4 overflow-y-auto">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-lg font-bold">Chat History</h2>
+            <button onclick="toggleSidebar()" class="md:hidden text-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <button onclick="startNewChat()" class="w-full bg-gray-800 hover:bg-gray-700 text-white px-4 py-3 rounded-lg mb-4 flex items-center gap-2 transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            New Chat
+        </button>
+        
+        <div id="chatHistory" class="space-y-2">
+            <!-- Chat history will be populated here -->
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col">
+        <!-- Header -->
+        <div class="bg-white shadow-sm border-b border-gray-200">
+            <div class="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
+                <button onclick="toggleSidebar()" class="text-gray-600 hover:text-gray-800">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
+                <div class="flex-1">
+                    <h1 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                        <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                        </svg>
+                        AI Assistant
+                    </h1>
+                    <p class="text-sm text-gray-600 mt-1">Upload files, ask questions, get intelligent answers</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Container -->
+        <div class="flex-1 max-w-4xl mx-auto px-4 py-6 w-full overflow-y-auto">
+            
+            <!-- Chat Messages -->
+            <div id="chatContainer" class="chat-container bg-white rounded-2xl shadow-lg p-6 mb-4">
+            <!-- Welcome Message -->
+            <div class="flex justify-start mb-4">
+                <div class="bg-blue-100 text-gray-800 rounded-2xl rounded-tl-sm px-6 py-4 message-bubble">
+                    <p class="font-medium mb-2">👋 Welcome! I'm your AI Assistant</p>
+                    <p class="text-sm">I can help you with:</p>
+                    <ul class="text-sm mt-2 space-y-1">
+                        <li>📄 Analyzing documents (PDF, DOCX, TXT)</li>
+                        <li>🖼️ Reading and explaining images</li>
+                        <li>❓ Answering questions from uploaded content</li>
+                        <li>📝 Summarizing and generating key points</li>
+                        <li>💬 General conversation and assistance</li>
+                    </ul>
+                    <p class="text-sm mt-3 font-medium">Upload a file or type a message to get started!</p>
+                </div>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="bg-white rounded-2xl shadow-lg p-4">
+            <!-- File Upload Preview -->
+            <div id="filePreview" class="hidden mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <span id="fileName" class="text-sm font-medium text-gray-700"></span>
+                    </div>
+                    <button onclick="removeFile()" class="text-red-600 hover:text-red-800">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Input Box -->
+            <div class="flex gap-2">
+                <input type="file" id="fileInput" class="hidden" accept=".jpg,.jpeg,.png,.pdf,.docx,.txt" onchange="handleFileSelect(event)">
+                
+                <button onclick="document.getElementById('fileInput').click()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl px-4 py-3 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+                    </svg>
+                </button>
+
+                <input type="text" id="messageInput" placeholder="Type your message here..." 
+                    class="flex-1 border border-gray-300 rounded-xl px-6 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    onkeypress="handleKeyPress(event)">
+
+                <button onclick="sendMessage()" id="sendButton" class="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-6 py-3 font-medium transition-colors">
+                    Send
+                </button>
+            </div>
+        </div>
+        </div>
+    </div>
+
+    <script>
+        let extractedContent = null;
+        let currentFile = null;
+        let chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
+        let currentChatId = null;
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadChatHistory();
+            startNewChat();
+        });
+        
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('hidden');
+        }
+        
+        function startNewChat() {
+            currentChatId = Date.now();
+            document.getElementById('chatContainer').innerHTML = `
+                <div class="flex justify-start mb-4">
+                    <div class="bg-blue-100 text-gray-800 rounded-2xl rounded-tl-sm px-6 py-4 message-bubble">
+                        <p class="font-medium mb-2">👋 Welcome! I'm your AI Assistant</p>
+                        <p class="text-sm">I can help you with:</p>
+                        <ul class="text-sm mt-2 space-y-1">
+                            <li>📄 Analyzing documents (PDF, DOCX, TXT)</li>
+                            <li>🖼️ Reading text from images</li>
+                            <li>🎨 Describing images (what they show and represent)</li>
+                            <li>❓ Answering questions from uploaded content</li>
+                            <li>📝 Summarizing and generating key points</li>
+                            <li>💬 General conversation and assistance</li>
+                        </ul>
+                        <p class="text-sm mt-3 font-medium">Upload a file or type a message to get started!</p>
+                    </div>
+                </div>
+            `;
+            extractedContent = null;
+            currentFile = null;
+            removeFile();
+        }
+        
+        function saveChatToHistory(title, lastMessage) {
+            const chat = {
+                id: currentChatId,
+                title: title.substring(0, 50),
+                lastMessage: lastMessage,
+                timestamp: Date.now()
+            };
+            
+            // Remove if exists
+            chatHistory = chatHistory.filter(c => c.id !== currentChatId);
+            
+            // Add to beginning
+            chatHistory.unshift(chat);
+            
+            // Keep only last 5
+            chatHistory = chatHistory.slice(0, 5);
+            
+            localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+            loadChatHistory();
+        }
+        
+        function loadChatHistory() {
+            const container = document.getElementById('chatHistory');
+            container.innerHTML = '';
+            
+            chatHistory.forEach(chat => {
+                const div = document.createElement('div');
+                div.className = 'p-3 bg-gray-800 hover:bg-gray-700 rounded-lg cursor-pointer transition-colors';
+                div.onclick = () => loadChat(chat.id);
+                div.innerHTML = `
+                    <p class="text-sm font-medium text-white truncate">${chat.title}</p>
+                    <p class="text-xs text-gray-400 mt-1">${new Date(chat.timestamp).toLocaleDateString()}</p>
+                `;
+                container.appendChild(div);
+            });
+        }
+        
+        function loadChat(chatId) {
+            // In a full implementation, you'd load the saved chat messages
+            // For now, just switch to that chat
+            currentChatId = chatId;
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            currentFile = file;
+            
+            // Show file preview
+            document.getElementById('filePreview').classList.remove('hidden');
+            document.getElementById('fileName').textContent = file.name;
+
+            // Upload and extract
+            uploadFile(file);
+        }
+
+        function removeFile() {
+            currentFile = null;
+            extractedContent = null;
+            document.getElementById('filePreview').classList.add('hidden');
+            document.getElementById('fileInput').value = '';
+        }
+
+        async function uploadFile(file) {
+            addMessage(`📎 Uploading ${file.name}...`, 'user');
+            showTypingIndicator();
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                hideTypingIndicator();
+
+                if (data.error) {
+                    addMessage(`❌ Error: ${data.error}`, 'assistant');
+                    return;
+                }
+
+                extractedContent = data.fullText;
+                
+                // Show extraction result
+                addMessage(`✅ File uploaded successfully!\n\n📄 **${data.filename}**\n\n**Extracted content preview:**\n${data.extractedText}${data.fullText.length > 500 ? '...' : ''}`, 'assistant');
+                
+                // Ask what to do
+                showActionButtons();
+
+            } catch (error) {
+                hideTypingIndicator();
+                addMessage(`❌ Error uploading file: ${error.message}`, 'assistant');
+            }
+        }
+
+        function showActionButtons() {
+            const actionsHtml = `
+                <div class="mt-4 space-y-2">
+                    <p class="font-medium mb-2">What would you like me to do?</p>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="processContent('summarize')" class="bg-blue-100 hover:bg-blue-200 text-blue-800 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                            📝 Summarize
+                        </button>
+                        <button onclick="processContent('explain')" class="bg-green-100 hover:bg-green-200 text-green-800 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                            📖 Explain
+                        </button>
+                        <button onclick="processContent('solve')" class="bg-purple-100 hover:bg-purple-200 text-purple-800 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                            ✅ Solve Questions
+                        </button>
+                        <button onclick="processContent('keypoints')" class="bg-orange-100 hover:bg-orange-200 text-orange-800 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                            🎯 Key Points
+                        </button>
+                        <button onclick="processContent('auto')" class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                            🤖 Auto Analyze
+                        </button>
+                    </div>
+                    <p class="text-sm text-gray-600 mt-2">Or type a custom prompt below</p>
+                </div>
+            `;
+            
+            const container = document.getElementById('chatContainer');
+            const lastMessage = container.lastElementChild;
+            if (lastMessage) {
+                lastMessage.querySelector('.message-bubble').innerHTML += actionsHtml;
+            }
+        }
+
+        async function processContent(action) {
+            if (!extractedContent) return;
+
+            let prompt = '';
+            switch(action) {
+                case 'summarize':
+                    prompt = 'Provide a concise summary of this content';
+                    break;
+                case 'explain':
+                    prompt = 'Explain this content in detail, making it easy to understand';
+                    break;
+                case 'solve':
+                    prompt = 'Find and answer all questions present in this content';
+                    break;
+                case 'keypoints':
+                    prompt = 'Extract and list the key points from this content';
+                    break;
+                case 'auto':
+                    prompt = null; // Auto analysis
+                    break;
+            }
+
+            addMessage(prompt || 'Auto analyzing content...', 'user');
+            await analyzeContent(extractedContent, prompt);
+        }
+
+        async function analyzeContent(content, prompt) {
+            showTypingIndicator();
+
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        content: content,
+                        prompt: prompt
+                    })
+                });
+
+                const data = await response.json();
+                hideTypingIndicator();
+
+                if (data.error) {
+                    addMessage(`❌ Error: ${data.error}`, 'assistant');
+                    return;
+                }
+
+                addMessage(data.result, 'assistant');
+                addDownloadButton(data.result);
+                
+                // Save to history
+                const title = prompt || 'Document Analysis';
+                saveChatToHistory(title, data.result.substring(0, 100));
+
+            } catch (error) {
+                hideTypingIndicator();
+                addMessage(`❌ Error: ${error.message}`, 'assistant');
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+
+            if (!message) return;
+
+            // If file uploaded, analyze with custom prompt
+            if (extractedContent) {
+                addMessage(message, 'user');
+                input.value = '';
+                await analyzeContent(extractedContent, message);
+                return;
+            }
+
+            // Regular chat
+            addMessage(message, 'user');
+            input.value = '';
+            showTypingIndicator();
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message })
+                });
+
+                const data = await response.json();
+                hideTypingIndicator();
+
+                if (data.error) {
+                    addMessage(`❌ Error: ${data.error}`, 'assistant');
+                    return;
+                }
+
+                addMessage(data.response, 'assistant');
+                
+                // Save to history
+                saveChatToHistory(message, data.response.substring(0, 100));
+
+            } catch (error) {
+                hideTypingIndicator();
+                addMessage(`❌ Error: ${error.message}`, 'assistant');
+            }
+        }
+
+        function addMessage(text, sender) {
+            const container = document.getElementById('chatContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'} mb-4`;
+
+            const bubble = document.createElement('div');
+            bubble.className = `${sender === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'} rounded-2xl ${sender === 'user' ? 'rounded-tr-sm' : 'rounded-tl-sm'} px-6 py-4 message-bubble`;
+            bubble.innerHTML = formatMessage(text);
+
+            messageDiv.appendChild(bubble);
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function formatMessage(text) {
+            // Remove markdown symbols and create clean, human-readable HTML
+            
+            // Remove ### and ## but keep the heading
+            text = text.replace(/^#{1,6}\s+(.+)$/gm, '<div class="font-bold text-lg mt-4 mb-2 text-gray-900">$1</div>');
+            
+            // Remove ** for bold but keep emphasis with styling
+            text = text.replace(/\*\*(.+?)\*\*/g, '<span class="font-semibold text-gray-900">$1</span>');
+            
+            // Code blocks - make them readable
+            text = text.replace(/```[\w]*\n?([\s\S]+?)```/g, '<div class="bg-gray-50 border-l-4 border-blue-500 p-4 my-3 rounded"><code class="text-sm text-gray-800 whitespace-pre-wrap">$1</code></div>');
+            
+            // Inline code - subtle styling
+            text = text.replace(/`([^`]+)`/g, '<span class="bg-gray-100 text-gray-800 px-2 py-0.5 rounded text-sm font-mono">$1</span>');
+            
+            // Convert bullet points to clean lists
+            let lines = text.split('\n');
+            let inList = false;
+            let result = [];
+            
+            for (let line of lines) {
+                // Check for bullet points
+                if (line.match(/^[-•*]\s+(.+)/)) {
+                    if (!inList) {
+                        result.push('<ul class="space-y-2 my-3">');
+                        inList = true;
+                    }
+                    const content = line.replace(/^[-•*]\s+/, '');
+                    result.push(`<li class="flex items-start gap-2"><span class="text-blue-600 font-bold">•</span><span class="flex-1">${content}</span></li>`);
+                }
+                // Check for numbered lists
+                else if (line.match(/^(\d+)\.\s+(.+)/)) {
+                    if (!inList) {
+                        result.push('<ol class="space-y-2 my-3">');
+                        inList = true;
+                    }
+                    const match = line.match(/^(\d+)\.\s+(.+)/);
+                    result.push(`<li class="flex items-start gap-2"><span class="text-blue-600 font-bold">${match[1]}.</span><span class="flex-1">${match[2]}</span></li>`);
+                }
+                else {
+                    if (inList) {
+                        result.push(line.includes('<ul') ? '</ul>' : '</ol>');
+                        inList = false;
+                    }
+                    result.push(line);
+                }
+            }
+            
+            if (inList) {
+                result.push('</ul>');
+            }
+            
+            text = result.join('\n');
+            
+            // Create proper paragraphs
+            text = text.replace(/\n\n+/g, '</p><p class="my-3">');
+            text = '<p class="my-3">' + text + '</p>';
+            
+            // Clean up empty paragraphs
+            text = text.replace(/<p class="my-3"><\/p>/g, '');
+            
+            // Single line breaks become spaces for readability
+            text = text.replace(/\n/g, ' ');
+            
+            return text;
+        }
+
+        function showTypingIndicator() {
+            const container = document.getElementById('chatContainer');
+            const typingDiv = document.createElement('div');
+            typingDiv.id = 'typingIndicator';
+            typingDiv.className = 'flex justify-start mb-4';
+            typingDiv.innerHTML = `
+                <div class="bg-gray-100 rounded-2xl rounded-tl-sm px-6 py-4">
+                    <div class="flex gap-1">
+                        <div class="w-2 h-2 bg-gray-600 rounded-full typing-dot"></div>
+                        <div class="w-2 h-2 bg-gray-600 rounded-full typing-dot"></div>
+                        <div class="w-2 h-2 bg-gray-600 rounded-full typing-dot"></div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(typingDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            if (indicator) indicator.remove();
+        }
+
+        function addDownloadButton(content) {
+            const container = document.getElementById('chatContainer');
+            const lastMessage = container.lastElementChild;
+            if (lastMessage) {
+                const btnContainer = document.createElement('div');
+                btnContainer.className = 'flex gap-2 mt-3';
+                
+                const txtBtn = document.createElement('button');
+                txtBtn.className = 'bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2';
+                txtBtn.innerHTML = `
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                    </svg>
+                    Download TXT
+                `;
+                txtBtn.onclick = () => downloadAsText(content);
+                
+                const pdfBtn = document.createElement('button');
+                pdfBtn.className = 'bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2';
+                pdfBtn.innerHTML = `
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                    </svg>
+                    Download PDF
+                `;
+                pdfBtn.onclick = () => downloadAsPDF(content);
+                
+                btnContainer.appendChild(txtBtn);
+                btnContainer.appendChild(pdfBtn);
+                lastMessage.querySelector('.message-bubble').appendChild(btnContainer);
+            }
+        }
+
+        function downloadAsText(content) {
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `ai-analysis-${Date.now()}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        async function downloadAsPDF(content) {
+            try {
+                const response = await fetch('/api/download-pdf', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        content: content,
+                        title: 'AI Analysis Report'
+                    })
+                });
+
+                if (!response.ok) throw new Error('PDF generation failed');
+
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `AI-Analysis-${Date.now()}.pdf`;
+                a.click();
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                alert('Error generating PDF: ' + error.message);
+            }
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+    </script>
+</body>
+</html>
