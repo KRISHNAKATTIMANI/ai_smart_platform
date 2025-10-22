@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeftIcon, MicrophoneIcon, StopIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 
+const API_BASE_URL = process.env.REACT_APP_API_URL || '';
+
 const VoiceToTextPage = () => {
   const navigate = useNavigate();
   const [isRecording, setIsRecording] = useState(false);
@@ -176,7 +178,7 @@ const VoiceToTextPage = () => {
     setAiResponse('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/chat', {
+      const response = await fetch(`${API_BASE_URL}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
