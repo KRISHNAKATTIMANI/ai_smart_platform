@@ -5,7 +5,9 @@ import {
   PhotoIcon,
   CameraIcon,
   MicrophoneIcon,
-  SpeakerWaveIcon
+  SpeakerWaveIcon,
+  SparklesIcon,
+  ArrowsPointingOutIcon
 } from '@heroicons/react/24/outline';
 import Navbar from '../components/Navbar';
 
@@ -38,6 +40,24 @@ const HomePage = () => {
       icon: CameraIcon,
       path: '/image-to-text',
       color: 'bg-green-500',
+      status: 'active'
+    },
+    {
+      id: 'outpainting',
+      title: 'Outpainting & Background Fill',
+      description: 'Expand and clean up images intelligently',
+      icon: SparklesIcon,
+      path: '/outpainting',
+      color: 'bg-pink-500',
+      status: 'active'
+    },
+    {
+      id: 'image-enhance',
+      title: 'AI Image Upscaling',
+      description: 'Enhance quality & increase resolution',
+      icon: ArrowsPointingOutIcon,
+      path: '/image-enhance',
+      color: 'bg-orange-500',
       status: 'active'
     },
     {

@@ -4,10 +4,16 @@ Flask backend with file upload, OCR, and intelligent analysis
 """
 
 import os
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, session
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import google.generativeai as genai
+import uuid
+from database import (
+    init_database, track_interaction, get_user_history,
+    add_favorite, get_favorites, remove_favorite,
+    get_usage_analytics, get_recommendations
+)
 from PIL import Image
 import fitz  # PyMuPDF
 from docx import Document
@@ -18,19 +24,38 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.enums import TA_LEFT
 import io
 from datetime import datetime
+from urllib.parse import quote
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for React frontend
+# Enable CORS with credentials for session management
+CORS(app, supports_credentials=True)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 app.config['UPLOAD_FOLDER'] = 'uploads'
+app.secret_key = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
 
 # Create uploads folder
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+# Initialize database
+init_database()
 
 # Configure Gemini API
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
+
+# Configure LightX AI Expander API
+LIGHTX_API_KEY = os.getenv('LIGHTX_API_KEY', '')
+
+# Configure Replicate API for AI Upscaling
+REPLICATE_API_KEY = os.getenv('REPLICATE_API_KEY', '')
+
+
+def get_session_id():
+    """Get or create session ID for user tracking."""
+    if 'session_id' not in session:
+        session['session_id'] = str(uuid.uuid4())
+    return session['session_id']
 
 
 def extract_text_from_image(image_path):
@@ -294,6 +319,13 @@ def chat():
 
         response = model.generate_content(enhanced_prompt)
 
+        # Track interaction
+        session_id = get_session_id()
+        track_interaction(session_id, 'text-to-text', 'chat', {
+            'message_length': len(message),
+            'response_length': len(response.text.strip())
+        })
+
         return jsonify({
             'success': True,
             'response': response.text.strip()
@@ -422,6 +454,663 @@ def get_usage():
         }
 
         return jsonify(usage_data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/generate-image', methods=['POST'])
+def generate_image():
+    """Generate image from text using Pollinations AI."""
+    try:
+        data = request.get_json()
+        prompt = data.get('prompt', '')
+        style = data.get('style', 'realistic')
+        size = data.get('size', '1024x1024')
+
+        if not prompt:
+            return jsonify({'error': 'Prompt is required'}), 400
+
+        print("=== Image Generation Request ===")
+        print(f"Prompt: {prompt}")
+        print(f"Style: {style}")
+        print(f"Size: {size}")
+
+        # Enhance prompt based on style
+        style_prompts = {
+            'realistic': 'photorealistic, detailed, high quality',
+            'artistic': 'artistic, creative, beautiful artwork',
+            'anime': 'anime style, manga, vibrant colors',
+            'cartoon': 'cartoon style, fun, colorful',
+            '3d': '3D render, octane render, detailed'
+        }
+
+        enhanced_prompt = f"{prompt}, {style_prompts.get(style, '')}"
+
+        # Parse size
+        width, height = 1024, 1024
+        if 'x' in size:
+            try:
+                w, h = size.split('x')
+                width, height = int(w), int(h)
+            except Exception:
+                pass
+
+        # Generate image using Pollinations AI
+        encoded_prompt = quote(enhanced_prompt)
+        seed = int(datetime.now().timestamp())
+        image_url = (
+            f"https://image.pollinations.ai/prompt/{encoded_prompt}"
+            f"?width={width}&height={height}&seed={seed}"
+            f"&model=flux&nologo=true&enhance=true"
+        )
+
+        print(f"Generated image URL: {image_url}")
+
+        # Track interaction
+        session_id = get_session_id()
+        track_interaction(session_id, 'text-to-image', 'generate', {
+            'prompt': prompt[:100],  # Store first 100 chars
+            'style': style,
+            'size': size
+        })
+
+        return jsonify({
+            'success': True,
+            'image_url': image_url,
+            'prompt': prompt,
+            'enhanced_prompt': enhanced_prompt
+        })
+
+    except Exception as e:
+        print(f"Error generating image: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+def upscale_image_local(filepath, scale_factor):
+    """
+    FREE local image enhancement using OpenCV and PIL.
+    No API calls, no rate limits, completely free!
+    """
+    import cv2
+    import numpy as np
+    from PIL import Image, ImageEnhance, ImageFilter
+
+    # Read image with OpenCV
+    img = cv2.imread(filepath)
+
+    # Get original dimensions
+    height, width = img.shape[:2]
+    new_width = int(width * scale_factor)
+    new_height = int(height * scale_factor)
+
+    # Use INTER_CUBIC for upscaling (high quality)
+    upscaled = cv2.resize(img, (new_width, new_height),
+                          interpolation=cv2.INTER_CUBIC)
+
+    # Apply enhancement filters
+    # 1. Denoise
+    denoised = cv2.fastNlMeansDenoisingColored(
+        upscaled, None, 10, 10, 7, 21)
+
+    # 2. Sharpen
+    kernel = np.array([[-1, -1, -1],
+                       [-1, 9, -1],
+                       [-1, -1, -1]])
+    sharpened = cv2.filter2D(denoised, -1, kernel)
+
+    # Convert to PIL for additional enhancements
+    img_pil = Image.fromarray(cv2.cvtColor(sharpened, cv2.COLOR_BGR2RGB))
+
+    # 3. Enhance contrast
+    enhancer = ImageEnhance.Contrast(img_pil)
+    img_pil = enhancer.enhance(1.2)
+
+    # 4. Enhance color
+    enhancer = ImageEnhance.Color(img_pil)
+    img_pil = enhancer.enhance(1.1)
+
+    # 5. Enhance sharpness
+    enhancer = ImageEnhance.Sharpness(img_pil)
+    img_pil = enhancer.enhance(1.3)
+
+    # 6. Apply unsharp mask for extra detail
+    img_pil = img_pil.filter(ImageFilter.UnsharpMask(radius=2, percent=150))
+
+    return img_pil
+
+
+@app.route('/api/upscale', methods=['POST'])
+def upscale_image():
+    """Upscale image using multiple methods: LOCAL or Replicate."""
+    try:
+        if 'image' not in request.files:
+            return jsonify({'error': 'No image provided'}), 400
+
+        image_file = request.files['image']
+        scale = request.form.get('scale', '2')  # 2x or 4x
+        face_enhance = request.form.get('face_enhance', 'false') == 'true'
+        method = request.form.get('method', 'local')
+
+        print("=== Image Upscaling Request ===")
+        print(f"Image: {image_file.filename}")
+        print(f"Scale: {scale}x")
+        print(f"Face Enhance: {face_enhance}")
+        print(f"Method: {method}")
+
+        # Save uploaded image temporarily
+        filename = secure_filename(image_file.filename)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        unique_filename = f"{timestamp}_{filename}"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+        image_file.save(filepath)
+
+        # Choose enhancement method
+        if method == 'local':
+            print("Using FREE local enhancement (OpenCV + PIL)...")
+
+            # Use local enhancement
+            enhanced_img = upscale_image_local(filepath, int(scale))
+
+            # Save enhanced image
+            output_filename = f"enhanced_{unique_filename}"
+            output_path = os.path.join(
+                app.config['UPLOAD_FOLDER'], output_filename)
+            enhanced_img.save(output_path, 'PNG', quality=95, optimize=True)
+
+            # Convert to base64 for response
+            import base64
+            import io
+            buffered = io.BytesIO()
+            enhanced_img.save(buffered, format="PNG")
+            img_str = base64.b64encode(buffered.getvalue()).decode('utf-8')
+            image_url = f"data:image/png;base64,{img_str}"
+
+            # Clean up uploaded file
+            try:
+                os.remove(filepath)
+            except Exception:
+                pass
+
+            print("Local upscaling successful!")
+
+            return jsonify({
+                'success': True,
+                'image_url': image_url,
+                'scale': scale,
+                'method': 'local',
+                'message': 'Enhanced using FREE local processing (OpenCV)'
+            })
+
+        else:  # method == 'replicate'
+            # Read image and convert to base64
+            import base64
+            with open(filepath, 'rb') as f:
+                image_data = base64.b64encode(f.read()).decode('utf-8')
+
+            # Use Replicate API
+            import replicate
+
+            print("Calling Replicate API for upscaling...")
+
+            # Set API token
+            os.environ["REPLICATE_API_TOKEN"] = REPLICATE_API_KEY
+
+            # Use Real-ESRGAN model
+            model_version = (
+                "nightmareai/real-esrgan:"
+                "42fed1c4974146d4d2414e2be2c5277c7fcf05fcc3a73abf41610695738c"
+                "1d7b"
+            )
+
+            output = replicate.run(
+                model_version,
+                input={
+                    "image": f"data:image/jpeg;base64,{image_data}",
+                    "scale": int(scale),
+                    "face_enhance": face_enhance
+                }
+            )
+
+            # Clean up uploaded file
+            try:
+                os.remove(filepath)
+            except Exception:
+                pass
+
+            print(f"Upscaling successful! Output: {output}")
+
+            return jsonify({
+                'success': True,
+                'image_url': output,
+                'scale': scale,
+                'face_enhance': face_enhance,
+                'method': 'replicate'
+            })
+
+    except Exception as e:
+        error_message = str(e)
+        print(f"Error upscaling image: {error_message}")
+        import traceback
+        traceback.print_exc()
+
+        # Check if it's a rate limit error
+        if '429' in error_message or 'rate limit' in error_message.lower():
+            return jsonify({
+                'error': 'Rate Limit Exceeded',
+                'message': (
+                    'The Replicate API has a rate limit on the free tier. '
+                    'Please wait a minute and try again, or upgrade your '
+                    'Replicate account to remove limits.'
+                ),
+                'details': error_message
+            }), 429
+
+        # Check if it's a credit/billing error
+        if ('402' in error_message or
+                'insufficient credit' in error_message.lower() or
+                'billing' in error_message.lower()):
+            return jsonify({
+                'error': 'Insufficient Credits',
+                'message': (
+                    'Your Replicate account does not have enough credits. '
+                    'Please add a payment method at '
+                    'https://replicate.com/account/billing '
+                    'to purchase credits and use this feature.'
+                ),
+                'details': error_message
+            }), 402
+
+        return jsonify({
+            'error': 'Image upscaling failed',
+            'message': error_message
+        }), 500
+
+
+@app.route('/api/outpaint', methods=['POST'])
+def outpaint_image():
+    """Expand and complete images using LightX AI Expander."""
+    try:
+        print("=== Outpaint Request Received ===")
+
+        if 'image' not in request.files:
+            print("Error: No image in request")
+            return jsonify({'error': 'No image provided'}), 400
+
+        image_file = request.files['image']
+        prompt = request.form.get('prompt', '')
+        direction = request.form.get('direction', 'all')
+
+        print(f"Image: {image_file.filename}")
+        print(f"Prompt: {prompt}")
+        print(f"Direction: {direction}")
+
+        if not prompt:
+            print("Error: No prompt provided")
+            return jsonify({
+                'error': 'Prompt required to describe expansion'
+            }), 400
+
+        # Save uploaded image temporarily
+        filename = secure_filename(image_file.filename)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        unique_filename = f"{timestamp}_{filename}"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+        image_file.save(filepath)
+
+        # Read image as base64
+        import base64
+        with open(filepath, 'rb') as f:
+            image_data = base64.b64encode(f.read()).decode('utf-8')
+
+        # Prepare LightX AI Expander API request
+        import requests
+
+        lightx_url = (
+            "https://api.lightxeditor.com/external/api/v1/outpainting"
+        )
+
+        headers = {
+            'x-api-key': LIGHTX_API_KEY,
+            'Content-Type': 'application/json'
+        }
+
+        # Map direction to aspect ratio
+        aspect_ratio = "16:9"  # default
+        if direction == "horizontal":
+            aspect_ratio = "16:9"
+        elif direction == "vertical":
+            aspect_ratio = "9:16"
+        elif direction == "all":
+            aspect_ratio = "1:1"
+
+        payload = {
+            "image": f"data:image/jpeg;base64,{image_data}",
+            "prompt": prompt,
+            "aspect_ratio": aspect_ratio,
+            "creativity": 0.7
+        }
+
+        # Call LightX AI Expander API
+        print("Calling LightX AI API...")
+        print(f"Payload: Aspect={aspect_ratio}")
+
+        try:
+            response = requests.post(
+                lightx_url, json=payload, headers=headers, timeout=30
+            )
+
+            print(f"LightX Status: {response.status_code}")
+
+            if response.status_code == 200:
+                result = response.json()
+                img_url = result.get('output_url')
+                image_url = img_url or result.get('image_url')
+
+                if image_url:
+                    print(f"Success! Image URL: {image_url}")
+
+                    # Clean up uploaded file
+                    try:
+                        os.remove(filepath)
+                    except Exception:
+                        pass
+
+                    return jsonify({
+                        'success': True,
+                        'image_url': image_url,
+                        'enhanced_prompt': prompt
+                    })
+        except requests.exceptions.Timeout:
+            print("LightX timeout - falling back...")
+        except Exception as e:
+            print(f"LightX error: {str(e)} - falling back...")
+
+        # Fallback to Pollinations AI if LightX fails
+        print("Using Pollinations AI fallback...")
+        enhanced_prompt = prompt
+
+        if GEMINI_API_KEY:
+            try:
+                genai.configure(api_key=GEMINI_API_KEY)
+                model = genai.GenerativeModel('gemini-2.5-flash')
+                img = Image.open(filepath)
+                analysis_prompt = (
+                    f"Create detailed description for "
+                    f"expanding: {prompt}. "
+                    f"Add what should complete the scene."
+                )
+                ai_response = model.generate_content(
+                    [analysis_prompt, img]
+                )
+                enhanced_prompt = ai_response.text.strip()
+                print(f"Enhanced: {enhanced_prompt[:100]}...")
+            except Exception as e:
+                print(f"Gemini error: {str(e)}")
+
+        encoded_prompt = quote(enhanced_prompt)
+        seed = int(datetime.now().timestamp())
+        image_url = (
+            f"https://image.pollinations.ai/prompt/{encoded_prompt}"
+            f"?width=1920&height=1080&seed={seed}"
+            f"&model=flux&nologo=true&enhance=true"
+        )
+
+        print("Fallback image generated")
+
+        # Clean up uploaded file
+        try:
+            os.remove(filepath)
+        except Exception:
+            pass
+
+        return jsonify({
+            'success': True,
+            'image_url': image_url,
+            'enhanced_prompt': enhanced_prompt
+        })
+
+    except Exception as e:
+        print(f"Error in outpaint: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/transcribe-audio', methods=['POST'])
+def transcribe_audio():
+    """Transcribe audio file using Gemini AI."""
+    try:
+        print("=== Audio Transcription Request ===")
+
+        if 'audio' not in request.files:
+            return jsonify({'error': 'No audio file provided'}), 400
+
+        audio_file = request.files['audio']
+
+        if audio_file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+
+        print(f"Audio file: {audio_file.filename}")
+
+        # Save audio temporarily
+        filename = secure_filename(audio_file.filename)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        unique_filename = f"{timestamp}_{filename}"
+        filepath = os.path.join(
+            app.config['UPLOAD_FOLDER'], unique_filename
+        )
+        audio_file.save(filepath)
+
+        try:
+            # Use Gemini AI to transcribe
+            if not GEMINI_API_KEY:
+                return jsonify({
+                    'error': 'Gemini API not configured'
+                }), 500
+
+            genai.configure(api_key=GEMINI_API_KEY)
+            model = genai.GenerativeModel('gemini-2.5-flash')
+
+            # Upload audio file to Gemini
+            uploaded_audio = genai.upload_file(filepath)
+
+            prompt = (
+                "Transcribe this audio accurately. "
+                "Provide the exact words spoken with proper punctuation "
+                "and formatting. If the audio is unclear, note that in "
+                "your transcription."
+            )
+
+            response = model.generate_content([prompt, uploaded_audio])
+            transcription = response.text.strip()
+
+            print(f"Transcription complete: {transcription[:100]}...")
+
+            # Clean up
+            try:
+                os.remove(filepath)
+            except Exception:
+                pass
+
+            return jsonify({
+                'success': True,
+                'transcription': transcription
+            })
+
+        except Exception as e:
+            print(f"Gemini transcription error: {str(e)}")
+            # Clean up
+            try:
+                os.remove(filepath)
+            except Exception:
+                pass
+            return jsonify({
+                'error': f'Transcription failed: {str(e)}'
+            }), 500
+
+    except Exception as e:
+        print(f"Error in transcribe: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/generate-speech', methods=['POST'])
+def generate_speech():
+    """Generate speech from text and return audio URL."""
+    try:
+        data = request.get_json()
+        text = data.get('text', '')
+
+        if not text:
+            return jsonify({'error': 'No text provided'}), 400
+
+        print("=== Speech Generation Request ===")
+        print(f"Text: {text[:100]}...")
+
+        # For now, return instructions for browser-based TTS
+        # In production, integrate with Google TTS, ElevenLabs, or similar
+        return jsonify({
+            'success': True,
+            'message': 'Use browser speech synthesis',
+            'text': text,
+            'instructions': (
+                'Audio generation is handled client-side '
+                'for optimal performance'
+            )
+        })
+
+    except Exception as e:
+        print(f"Error in generate-speech: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/track', methods=['POST'])
+def track():
+    """Track user interaction."""
+    try:
+        data = request.get_json()
+        feature_type = data.get('feature_type', '')
+        action = data.get('action', '')
+        interaction_data = data.get('data', {})
+
+        session_id = get_session_id()
+
+        success = track_interaction(
+            session_id, feature_type, action, interaction_data
+        )
+
+        return jsonify({
+            'success': success,
+            'session_id': session_id
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/history', methods=['GET'])
+def history():
+    """Get user interaction history."""
+    try:
+        session_id = get_session_id()
+        limit = request.args.get('limit', 50, type=int)
+
+        user_history = get_user_history(session_id, limit)
+
+        return jsonify({
+            'success': True,
+            'history': user_history,
+            'count': len(user_history)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/favorites', methods=['GET', 'POST', 'DELETE'])
+def favorites():
+    """Manage user favorites."""
+    try:
+        session_id = get_session_id()
+
+        if request.method == 'GET':
+            # Get favorites
+            user_favorites = get_favorites(session_id)
+            return jsonify({
+                'success': True,
+                'favorites': user_favorites,
+                'count': len(user_favorites)
+            })
+
+        elif request.method == 'POST':
+            # Add favorite
+            data = request.get_json()
+            item_type = data.get('item_type', '')
+            item_data = data.get('item_data', {})
+
+            success = add_favorite(session_id, item_type, item_data)
+
+            return jsonify({
+                'success': success,
+                'message': (
+                    'Added to favorites' if success else 'Failed to add'
+                )
+            })
+
+        elif request.method == 'DELETE':
+            # Remove favorite
+            data = request.get_json()
+            favorite_id = data.get('favorite_id', 0)
+
+            success = remove_favorite(session_id, favorite_id)
+
+            return jsonify({
+                'success': success,
+                'message': (
+                    'Removed from favorites'
+                    if success else 'Failed to remove'
+                )
+            })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/analytics', methods=['GET'])
+def analytics():
+    """Get usage analytics and statistics."""
+    try:
+        session_id = get_session_id()
+        include_global = (
+            request.args.get('global', 'false').lower() == 'true'
+        )
+
+        user_analytics = get_usage_analytics(session_id)
+
+        result = {
+            'success': True,
+            'user_analytics': user_analytics
+        }
+
+        if include_global:
+            global_analytics = get_usage_analytics()
+            result['global_analytics'] = global_analytics
+
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/recommendations', methods=['GET'])
+def recommendations():
+    """Get personalized recommendations based on user history."""
+    try:
+        session_id = get_session_id()
+
+        user_recommendations = get_recommendations(session_id)
+
+        return jsonify({
+            'success': True,
+            'recommendations': user_recommendations
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

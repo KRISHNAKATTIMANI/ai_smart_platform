@@ -1,6 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeftIcon, MicrophoneIcon, StopIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, MicrophoneIcon, StopIcon } from '@heroicons/react/24/outline';
+import InsightCard from '../components/InsightCard';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || '';
 
@@ -13,33 +14,28 @@ const VoiceToTextPage = () => {
   const [isListening, setIsListening] = useState(false);
   const [aiResponse, setAiResponse] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [timestamp, setTimestamp] = useState(null);
   const recognitionRef = useRef(null);
 
   useEffect(() => {
-    // Check if browser supports Speech Recognition
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       recognitionRef.current = new SpeechRecognition();
       recognitionRef.current.continuous = true;
       recognitionRef.current.interimResults = true;
       recognitionRef.current.lang = 'en-US';
-      recognitionRef.current.maxAlternatives = 1;
 
       recognitionRef.current.onstart = () => {
-        console.log('Speech recognition started');
         setIsListening(true);
         setError('');
       };
 
       recognitionRef.current.onresult = (event) => {
-        console.log('Got speech result:', event.results);
         let interim = '';
         let final = '';
 
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const transcriptPart = event.results[i][0].transcript;
-          console.log('Transcript part:', transcriptPart, 'isFinal:', event.results[i].isFinal);
-          
           if (event.results[i].isFinal) {
             final += transcriptPart + ' ';
           } else {
@@ -56,44 +52,25 @@ const VoiceToTextPage = () => {
       };
 
       recognitionRef.current.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
-        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-          setError('Microphone access denied. Please allow microphone access in your browser settings and reload the page.');
-        } else if (event.error === 'no-speech') {
-          setError('No speech detected. Please try again and speak clearly.');
-          // Don't stop recording on no-speech, just show warning
-          setTimeout(() => setError(''), 3000);
-        } else if (event.error === 'network') {
-          // Network error often occurs even with good connection - ignore it
-          console.log('Network error ignored - continuing with local recognition');
-          setError('');
-        } else if (event.error === 'aborted') {
-          setError('');
-        } else {
-          setError(`Error: ${event.error}. Please try clicking the microphone again.`);
-        }
-        
-        if (event.error !== 'no-speech' && event.error !== 'network') {
-          setIsRecording(false);
-          setIsListening(false);
+        if (event.error === 'not-allowed') {
+          setError('Microphone access denied.');
+        } else if (event.error !== 'no-speech' && event.error !== 'network') {
+          setError(`Error: ${event.error}`);
         }
       };
 
       recognitionRef.current.onend = () => {
-        console.log('Speech recognition ended');
         setIsListening(false);
-        // Auto-restart if we're still supposed to be recording
         if (isRecording) {
           try {
             recognitionRef.current.start();
           } catch (err) {
-            console.log('Could not restart:', err);
             setIsRecording(false);
           }
         }
       };
     } else {
-      setError('Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari.');
+      setError('Speech recognition not supported.');
     }
 
     return () => {
@@ -101,7 +78,7 @@ const VoiceToTextPage = () => {
         try {
           recognitionRef.current.stop();
         } catch (err) {
-          console.log('Cleanup error:', err);
+          // Ignore
         }
       }
     };
@@ -109,46 +86,13 @@ const VoiceToTextPage = () => {
 
   const startRecording = async () => {
     if (recognitionRef.current && !isRecording) {
-      setError('');
-      
-      // First, request microphone permission explicitly
       try {
         await navigator.mediaDevices.getUserMedia({ audio: true });
-      } catch (err) {
-        console.error('Microphone permission error:', err);
-        setError('Microphone access denied. Please allow microphone access and reload the page.');
-        return;
-      }
-
-      setIsRecording(true);
-      setIsListening(true);
-      
-      try {
+        setIsRecording(true);
         recognitionRef.current.start();
-        console.log('Recognition started successfully');
       } catch (err) {
-        console.error('Failed to start recording:', err);
-        if (err.message && err.message.includes('already started')) {
-          // Already running, that's okay
-          console.log('Recognition already running');
-        } else {
-          setError('Failed to start recording. Please refresh the page and try again.');
-          setIsRecording(false);
-          setIsListening(false);
-        }
+        setError('Microphone access denied.');
       }
-    }
-  };
-
-  const requestMicrophonePermission = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach(track => track.stop());
-      setError('');
-      alert('Microphone access granted! You can now start recording.');
-    } catch (err) {
-      console.error('Microphone permission error:', err);
-      setError('Microphone access denied. Please allow microphone access in your browser settings.');
     }
   };
 
@@ -156,7 +100,6 @@ const VoiceToTextPage = () => {
     if (recognitionRef.current && isRecording) {
       recognitionRef.current.stop();
       setIsRecording(false);
-      setIsListening(false);
     }
   };
 
@@ -164,267 +107,206 @@ const VoiceToTextPage = () => {
     setTranscript('');
     setInterimTranscript('');
     setAiResponse('');
-    setError('');
+    setTimestamp(null);
   };
 
   const analyzeWithAI = async () => {
     if (!transcript.trim()) {
-      setError('No transcript to analyze. Please record something first.');
+      setError('No transcript to analyze.');
       return;
     }
 
     setIsAnalyzing(true);
     setError('');
-    setAiResponse('');
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/chat`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: transcript
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: transcript }),
       });
 
       const data = await response.json();
-
       if (data.success) {
         setAiResponse(data.response);
+        setTimestamp(Date.now());
       } else {
         setError(data.error || 'Failed to get AI response');
       }
     } catch (err) {
-      setError('Failed to connect to AI. Make sure the backend is running.');
+      setError('Failed to connect to AI.');
     } finally {
       setIsAnalyzing(false);
     }
   };
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(transcript);
-    alert('Text copied to clipboard!');
-  };
-
-  const downloadTranscript = () => {
-    const element = document.createElement('a');
-    const file = new Blob([transcript], { type: 'text/plain' });
-    element.href = URL.createObjectURL(file);
-    element.download = `transcript-${Date.now()}.txt`;
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
-  };
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white shadow">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-green-50 to-teal-50">
+      <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <button
             onClick={() => navigate('/')}
-            className="flex items-center space-x-2 text-gray-600 hover:text-primary transition-colors"
+            className="flex items-center space-x-2 text-gray-600 hover:text-primary transition-colors duration-200"
           >
             <ArrowLeftIcon className="w-5 h-5" />
-            <span>Back to Home</span>
+            <span className="font-medium">Back to Home</span>
           </button>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Voice → Text</h1>
-          <p className="text-gray-600">Convert your speech to text in real-time using voice recognition.</p>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8 animate-fadeIn">
+          <h1 className="text-4xl font-bold text-gray-900 mb-3 flex items-center gap-3">
+            <MicrophoneIcon className="w-10 h-10 text-green-600" />
+            Voice → Text Transcription
+          </h1>
+          <p className="text-lg text-gray-600">
+            Convert your speech to text in real-time with AI-powered analysis
+          </p>
         </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            {transcript && (
+              <div className="animate-slideInLeft">
+                <InsightCard
+                  title="Transcription"
+                  content={transcript}
+                  type="extracted"
+                  timestamp={timestamp}
+                />
+              </div>
+            )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Recording Section */}
-          <div className="space-y-4">
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="font-semibold text-gray-900 mb-4">Voice Recording</h3>
+            {aiResponse && (
+              <div className="animate-slideInLeft" style={{ animationDelay: '0.1s' }}>
+                <InsightCard
+                  title="AI Response"
+                  content={aiResponse}
+                  type="ai"
+                  timestamp={timestamp}
+                />
+              </div>
+            )}
+
+            {!transcript && !aiResponse && !isRecording && (
+              <div className="bg-white rounded-xl border-2 border-dashed border-gray-300 p-12 text-center">
+                <MicrophoneIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-400 text-lg">Your transcription will appear here</p>
+                <p className="text-gray-400 text-sm mt-2">Click the microphone to start recording</p>
+              </div>
+            )}
+
+            {isRecording && !transcript && (
+              <div className="bg-white rounded-xl border-2 border-green-200 p-12 text-center animate-pulse-subtle">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500 flex items-center justify-center">
+                  <div className="w-4 h-4 bg-white rounded-full animate-pulse"></div>
+                </div>
+                <p className="text-gray-600 font-medium">Listening... Speak now!</p>
+                <p className="text-gray-400 text-sm mt-2">Your words will appear above</p>
+              </div>
+            )}
+
+            <div className="bg-gradient-to-r from-green-50 to-teal-50 border-2 border-green-200 rounded-xl p-6">
+              <h3 className="font-semibold text-green-900 mb-3 flex items-center gap-2 text-lg">
+                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+                💡 Tips for Better Transcription
+              </h3>
+              <ul className="space-y-2 text-sm text-green-800">
+                <li className="flex items-start gap-2">
+                  <span className="text-green-600 font-bold mt-0.5">•</span>
+                  <span><strong>Clear environment:</strong> Use a quiet space</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-green-600 font-bold mt-0.5">•</span>
+                  <span><strong>Speak clearly:</strong> Moderate pace works best</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-green-600 font-bold mt-0.5">•</span>
+                  <span><strong>Distance:</strong> Stay 6-12 inches from mic</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-green-600 font-bold mt-0.5">•</span>
+                  <span><strong>Browser:</strong> Works best in Chrome, Edge, Safari</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="lg:col-span-1 space-y-6">
+            <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 sticky top-6">
+              <h3 className="font-semibold text-gray-900 mb-6 text-lg text-center">Voice Recording</h3>
               
-              <div className="flex flex-col items-center justify-center py-8">
+              <div className="flex flex-col items-center py-8">
                 {isRecording ? (
                   <div className="relative">
                     <button
                       onClick={stopRecording}
-                      className="w-32 h-32 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center transition-all transform hover:scale-105 shadow-lg"
+                      className="w-28 h-28 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center transition-all transform hover:scale-105 shadow-xl"
                     >
-                      <StopIcon className="w-16 h-16 text-white" />
+                      <StopIcon className="w-14 h-14 text-white" />
                     </button>
                     {isListening && (
-                      <div className="absolute inset-0 rounded-full animate-ping bg-red-400 opacity-75"></div>
+                      <>
+                        <div className="absolute inset-0 rounded-full animate-ping bg-red-400 opacity-50"></div>
+                        <div className="absolute inset-0 rounded-full animate-pulse bg-red-300 opacity-30"></div>
+                      </>
                     )}
                   </div>
                 ) : (
                   <button
                     onClick={startRecording}
                     disabled={!!error && error.includes('not supported')}
-                    className="w-32 h-32 bg-primary hover:bg-primary-dark rounded-full flex items-center justify-center transition-all transform hover:scale-105 shadow-lg disabled:bg-gray-300 disabled:cursor-not-allowed"
+                    className="w-28 h-28 bg-gradient-to-br from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 rounded-full flex items-center justify-center transition-all transform hover:scale-105 shadow-xl disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed"
                   >
-                    <MicrophoneIcon className="w-16 h-16 text-white" />
+                    <MicrophoneIcon className="w-14 h-14 text-white" />
                   </button>
                 )}
               </div>
 
-              <p className="text-center text-gray-600 mt-4">
+              <p className="text-center text-gray-600 mt-6 font-medium">
                 {isRecording ? (
-                  <span className="flex items-center justify-center space-x-2">
+                  <span className="flex items-center justify-center gap-2 text-red-600">
                     <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-                    <span className="font-semibold">Recording... Click to stop</span>
+                    Recording... Click to stop
                   </span>
                 ) : (
-                  'Click the microphone to start recording'
+                  'Click the microphone to start'
                 )}
               </p>
 
               {error && (
-                <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-                  <p className="mb-2">{error}</p>
-                  {error.includes('denied') && (
-                    <button
-                      onClick={requestMicrophonePermission}
-                      className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-sm"
-                    >
-                      Request Microphone Access
-                    </button>
-                  )}
+                <div className="mt-4 p-3 bg-red-50 border-2 border-red-200 text-red-700 rounded-lg text-sm">
+                  {error}
+                </div>
+              )}
+
+              {transcript && (
+                <div className="mt-6 space-y-2">
+                  <button
+                    onClick={analyzeWithAI}
+                    disabled={isAnalyzing}
+                    className="w-full px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg transition-all duration-200 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed font-semibold shadow-md hover:shadow-lg"
+                  >
+                    {isAnalyzing ? 'Analyzing...' : '🤖 Ask AI'}
+                  </button>
+                  <button
+                    onClick={clearTranscript}
+                    className="w-full px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all duration-200 font-semibold shadow-md hover:shadow-lg"
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+
+              {interimTranscript && (
+                <div className="mt-4 p-3 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800 italic">{interimTranscript}</p>
                 </div>
               )}
             </div>
-
-            {/* Tips Section */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h3 className="font-semibold text-blue-900 mb-2 flex items-center">
-                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                </svg>
-                Tips for Better Results:
-              </h3>
-              <ul className="text-sm text-blue-800 space-y-1 ml-7">
-                <li>• <strong>Allow microphone access</strong> when browser prompts you</li>
-                <li>• Speak clearly and at a moderate pace</li>
-                <li>• Use a quiet environment for best accuracy</li>
-                <li>• Speak 6-12 inches from your microphone</li>
-                <li>• Works best in Chrome, Edge, or Safari</li>
-              </ul>
-            </div>
-
-            {/* Permission Help */}
-            {error && error.includes('denied') && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <h3 className="font-semibold text-yellow-900 mb-2">🔒 How to Enable Microphone:</h3>
-                <div className="text-sm text-yellow-800 space-y-2">
-                  <p><strong>Chrome/Edge:</strong></p>
-                  <ol className="ml-4 space-y-1">
-                    <li>1. Click the 🔒 (lock) or 🛈 icon in the address bar</li>
-                    <li>2. Find "Microphone" and change to "Allow"</li>
-                    <li>3. Refresh the page and try again</li>
-                  </ol>
-                  <p className="mt-2"><strong>Settings:</strong> chrome://settings/content/microphone</p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Transcript Section */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900">Transcript</h3>
-              <div className="flex space-x-2">
-                {transcript && (
-                  <>
-                    <button
-                      onClick={analyzeWithAI}
-                      disabled={isAnalyzing}
-                      className="px-3 py-1 text-sm bg-primary hover:bg-primary-dark text-white rounded transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center space-x-1"
-                      title="Get AI answer"
-                    >
-                      {isAnalyzing ? (
-                        <>
-                          <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                          </svg>
-                          <span>Analyzing...</span>
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z" />
-                            <path d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z" />
-                          </svg>
-                          <span>Ask AI</span>
-                        </>
-                      )}
-                    </button>
-                    <button
-                      onClick={copyToClipboard}
-                      className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition-colors"
-                      title="Copy to clipboard"
-                    >
-                      Copy
-                    </button>
-                    <button
-                      onClick={downloadTranscript}
-                      className="px-3 py-1 text-sm bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
-                      title="Download as text file"
-                    >
-                      Download
-                    </button>
-                    <button
-                      onClick={clearTranscript}
-                      className="px-3 py-1 text-sm bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
-                      title="Clear transcript"
-                    >
-                      Clear
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <div className="border-2 border-gray-200 rounded-lg min-h-[400px] p-4 bg-gray-50">
-              {transcript || interimTranscript ? (
-                <p className="text-gray-800 whitespace-pre-wrap leading-relaxed">
-                  {transcript}
-                  <span className="text-gray-500 italic">{interimTranscript}</span>
-                </p>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-[400px] text-gray-400">
-                  <DocumentTextIcon className="w-16 h-16 mb-4 opacity-50" />
-                  <p>Your transcription will appear here</p>
-                  <p className="text-sm mt-2">Start recording to see real-time text</p>
-                  {isRecording && (
-                    <p className="text-sm mt-2 text-blue-600 font-semibold animate-pulse">Listening... Speak now!</p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {transcript && (
-              <div className="mt-4 text-sm text-gray-500">
-                Word count: {transcript.trim().split(/\s+/).filter(word => word.length > 0).length}
-              </div>
-            )}
-
-            {/* AI Response Section */}
-            {aiResponse && (
-              <div className="mt-6">
-                <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
-                  <svg className="w-5 h-5 mr-2 text-primary" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z" />
-                    <path d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z" />
-                  </svg>
-                  AI Response
-                </h3>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="text-gray-800 whitespace-pre-wrap leading-relaxed">
-                    {aiResponse}
-                  </p>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
