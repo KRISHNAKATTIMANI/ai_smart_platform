@@ -6,8 +6,8 @@ node_modules/
 # Testing
 /coverage
 
-# Production
-/build
+# Production - COMMENTED OUT FOR RENDER DEPLOYMENT
+# /build
 
 # Misc
 .DS_Store
