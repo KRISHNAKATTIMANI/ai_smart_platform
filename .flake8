@@ -1,0 +1,12 @@
+[flake8]
+max-line-length = 120
+exclude = 
+    .git,
+    __pycache__,
+    .venv,
+    venv,
+    node_modules,
+    react-app
+# Ignore whitespace warnings if they keep appearing
+# W293 = blank line contains whitespace
+extend-ignore = W293

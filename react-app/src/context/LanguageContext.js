@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 
 const LanguageContext = createContext();
 
@@ -19,7 +20,7 @@ export const LanguageProvider = ({ children }) => {
   // Load UI strings for current language
   const loadUIStrings = async (lang) => {
     try {
-      const response = await axios.get(`/api/ui-strings?lang=${lang}`);
+      const response = await axios.get(`${API_BASE_URL}/api/ui-strings?lang=${lang}`);
       if (response.data.success) {
         setUiStrings(response.data.strings);
       }
@@ -37,7 +38,7 @@ export const LanguageProvider = ({ children }) => {
   // Detect language from text
   const detectLanguage = async (text) => {
     try {
-      const response = await axios.post('/api/detect-language', { text });
+      const response = await axios.post(`${API_BASE_URL}/api/detect-language`, { text });
       if (response.data.success) {
         return response.data.language;
       }
