@@ -53,15 +53,15 @@ The `app.py` file now has:
 def serve_react(path):
     """Serve React application."""
     static_folder = os.path.join(os.path.dirname(__file__), 'react-app', 'build')
-    
+
     # Handle API routes
     if path.startswith('api/'):
         return jsonify({'error': 'API endpoint not found'}), 404
-    
+
     # Serve static files
     if path and os.path.exists(os.path.join(static_folder, path)):
         return send_file(os.path.join(static_folder, path))
-    
+
     # Serve index.html for all other routes (React Router)
     return send_file(os.path.join(static_folder, 'index.html'))
 ```
@@ -106,11 +106,11 @@ After deployment, everything works from ONE URL:
 
 ## ✨ Benefits
 
-✅ **One URL** - No need to manage separate frontend/backend URLs  
-✅ **No CORS issues** - Everything served from same domain  
-✅ **Simpler deployment** - Just one service to manage  
-✅ **Faster** - No cross-origin requests  
-✅ **Easier** - No need to configure REACT_APP_API_URL  
+✅ **One URL** - No need to manage separate frontend/backend URLs
+✅ **No CORS issues** - Everything served from same domain
+✅ **Simpler deployment** - Just one service to manage
+✅ **Faster** - No cross-origin requests
+✅ **Easier** - No need to configure REACT_APP_API_URL
 
 ---
 
