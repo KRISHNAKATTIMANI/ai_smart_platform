@@ -259,7 +259,7 @@ const TextToTextPage = () => {
           <div className="lg:col-span-1 space-y-6">
             <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 sticky top-6">
               <h3 className="font-semibold text-gray-900 mb-4 text-lg">Your Input</h3>
-              
+
               {/* Tab Selection */}
               <div className="flex gap-2 mb-4">
                 <button
