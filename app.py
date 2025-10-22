@@ -4,7 +4,8 @@ Flask backend with file upload, OCR, and intelligent analysis
 """
 
 import os
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file
+from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import google.generativeai as genai
 from PIL import Image
@@ -19,6 +20,7 @@ import io
 from datetime import datetime
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for React frontend
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 app.config['UPLOAD_FOLDER'] = 'uploads'
 
@@ -179,8 +181,18 @@ Write everything in clear, natural language that's easy to understand.
 
 @app.route('/')
 def index():
-    """Render main chat interface."""
-    return render_template('index.html')
+    """API status endpoint - React app runs separately on port 3000."""
+    return jsonify({
+        'status': 'running',
+        'message': 'Flask API running. Visit http://localhost:3000 for UI.',
+        'api_key_configured': bool(GEMINI_API_KEY),
+        'endpoints': [
+            '/api/upload',
+            '/api/chat',
+            '/api/download-pdf',
+            '/api/usage'
+        ]
+    })
 
 
 @app.route('/api/upload', methods=['POST'])
@@ -261,9 +273,12 @@ def chat():
         if not message:
             return jsonify({'error': 'No message provided'}), 400
 
-        if not GEMINI_API_KEY:
+        # Re-check API key from environment
+        api_key = os.getenv('GEMINI_API_KEY') or GEMINI_API_KEY
+        if not api_key:
             return jsonify({'error': 'API key not configured'}), 500
 
+        genai.configure(api_key=api_key)
         model = genai.GenerativeModel('gemini-2.5-flash')
         response = model.generate_content(message)
 
@@ -377,6 +392,28 @@ def download_pdf():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/usage', methods=['GET'])
+def get_usage():
+    """Get usage statistics for dashboard.
+
+    This is a simple implementation that returns mock data.
+    In production, you would track actual usage in a database.
+    """
+    try:
+        # Mock data - replace with actual database queries in production
+        usage_data = {
+            'textToText': 45,
+            'textToImage': 23,
+            'imageToText': 67,
+            'voiceToText': 12,
+            'textToAudio': 34
+        }
+
+        return jsonify(usage_data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     print("\n" + "=" * 60)
     print("🚀 AI Assistant Web App Starting...")
@@ -385,4 +422,4 @@ if __name__ == '__main__':
     api_status = '✓ Configured' if GEMINI_API_KEY else '✗ Missing'
     print("🔑 API Key: {}".format(api_status))
     print("\n" + "=" * 60 + "\n")
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5000, use_reloader=False)
