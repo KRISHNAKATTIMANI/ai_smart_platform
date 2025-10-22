@@ -144,6 +144,18 @@ class UIStrings:
             'help': 'Help',
             'about': 'About',
             'dashboard': 'Dashboard',
+
+            # Feature Descriptions
+            'text_to_text_desc': 'Get intelligent AI-powered responses to your questions',
+            'text_to_image_desc': 'Generate stunning images from text descriptions',
+            'image_to_text_desc': 'Extract and analyze text from images',
+            'voice_to_text_desc': 'Convert speech to text with high accuracy',
+            'image_enhance_desc': 'Enhance image quality with AI upscaling',
+            'outpainting_desc': 'Expand images beyond their boundaries',
+            'text_to_audio_desc': 'Convert text to natural-sounding speech',
+
+            # Page Titles
+            'homepage_title': 'Powerful AI tools for text, image, voice, and audio processing. Choose a feature below to get started.',
         },
 
         'kn': {
@@ -219,6 +231,18 @@ class UIStrings:
             'help': 'ಸಹಾಯ',
             'about': 'ಬಗ್ಗೆ',
             'dashboard': 'ಡ್ಯಾಶ್‌ಬೋರ್ಡ್',
+
+            # Feature Descriptions - ವೈಶಿಷ್ಟ್ಯ ವಿವರಣೆಗಳು
+            'text_to_text_desc': 'ನಿಮ್ಮ ಪ್ರಶ್ನೆಗಳಿಗೆ ಬುದ್ಧಿವಂತ AI-ಚಾಲಿತ ಪ್ರತಿಕ್ರಿಯೆಗಳನ್ನು ಪಡೆಯಿರಿ',
+            'text_to_image_desc': 'ಪಠ್ಯ ವಿವರಣೆಗಳಿಂದ ಅದ್ಭುತ ಚಿತ್ರಗಳನ್ನು ರಚಿಸಿ',
+            'image_to_text_desc': 'ಚಿತ್ರಗಳಿಂದ ಪಠ್ಯವನ್ನು ಹೊರತೆಗೆಯಿರಿ ಮತ್ತು ವಿಶ್ಲೇಷಿಸಿ',
+            'voice_to_text_desc': 'ಹೆಚ್ಚಿನ ನಿಖರತೆಯೊಂದಿಗೆ ಭಾಷಣವನ್ನು ಪಠ್ಯಕ್ಕೆ ಪರಿವರ್ತಿಸಿ',
+            'image_enhance_desc': 'AI ಅಪ್‌ಸ್ಕೇಲಿಂಗ್‌ನೊಂದಿಗೆ ಚಿತ್ರ ಗುಣಮಟ್ಟವನ್ನು ಹೆಚ್ಚಿಸಿ',
+            'outpainting_desc': 'ಚಿತ್ರಗಳನ್ನು ಅವುಗಳ ಗಡಿಗಳ ಆಚೆಗೆ ವಿಸ್ತರಿಸಿ',
+            'text_to_audio_desc': 'ಪಠ್ಯವನ್ನು ನೈಸರ್ಗಿಕ ಧ್ವನಿಯ ಭಾಷಣಕ್ಕೆ ಪರಿವರ್ತಿಸಿ',
+
+            # Page Titles - ಪುಟ ಶೀರ್ಷಿಕೆಗಳು
+            'homepage_title': 'ಪಠ್ಯ, ಚಿತ್ರ, ಧ್ವನಿ ಮತ್ತು ಆಡಿಯೋ ಪ್ರಕ್ರಿಯೆಗಾಗಿ ಶಕ್ತಿಶಾಲಿ AI ಸಾಧನಗಳು. ಪ್ರಾರಂಭಿಸಲು ಕೆಳಗಿನ ವೈಶಿಷ್ಟ್ಯವನ್ನು ಆರಿಸಿ.',
         }
     }
 

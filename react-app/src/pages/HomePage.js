@@ -20,7 +20,7 @@ const HomePage = () => {
     {
       id: 'text-to-text',
       title: t('text_to_text'),
-      description: t('ai_response'),
+      description: t('text_to_text_desc'),
       icon: DocumentTextIcon,
       path: '/text-to-text',
       color: 'bg-blue-500',
@@ -29,7 +29,7 @@ const HomePage = () => {
     {
       id: 'text-to-image',
       title: t('text_to_image'),
-      description: t('generate'),
+      description: t('text_to_image_desc'),
       icon: PhotoIcon,
       path: '/text-to-image',
       color: 'bg-purple-500',
@@ -38,7 +38,7 @@ const HomePage = () => {
     {
       id: 'image-to-text',
       title: t('image_to_text'),
-      description: t('extracted_text'),
+      description: t('image_to_text_desc'),
       icon: CameraIcon,
       path: '/image-to-text',
       color: 'bg-green-500',
@@ -47,7 +47,7 @@ const HomePage = () => {
     {
       id: 'outpainting',
       title: t('outpainting'),
-      description: t('enhance'),
+      description: t('outpainting_desc'),
       icon: SparklesIcon,
       path: '/outpainting',
       color: 'bg-pink-500',
@@ -56,7 +56,7 @@ const HomePage = () => {
     {
       id: 'image-enhance',
       title: t('image_enhance'),
-      description: t('enhance'),
+      description: t('image_enhance_desc'),
       icon: ArrowsPointingOutIcon,
       path: '/image-enhance',
       color: 'bg-orange-500',
@@ -65,7 +65,7 @@ const HomePage = () => {
     {
       id: 'voice-to-text',
       title: t('voice_to_text'),
-      description: t('transcription'),
+      description: t('voice_to_text_desc'),
       icon: MicrophoneIcon,
       path: '/voice-to-text',
       color: 'bg-red-500',
@@ -74,7 +74,7 @@ const HomePage = () => {
     {
       id: 'text-to-audio',
       title: t('text_to_audio'),
-      description: t('generate'),
+      description: t('text_to_audio_desc'),
       icon: SpeakerWaveIcon,
       path: '/text-to-audio',
       color: 'bg-yellow-500',
@@ -85,15 +85,14 @@ const HomePage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
             {t('welcome')} to AI Platform
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Powerful AI tools for text, image, voice, and audio processing.
-            Choose a feature below to get started.
+            {t('homepage_title')}
           </p>
         </div>
 
