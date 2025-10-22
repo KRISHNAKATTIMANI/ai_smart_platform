@@ -26,7 +26,7 @@ services:
     staticPublishPath: ./react-app/build
     envVars:
       - key: REACT_APP_API_URL
-        value: https://ai-assistant-api.onrender.com
+        value: https://smart-ai-flatform.onrender.com
     routes:
       - type: rewrite
         source: /*

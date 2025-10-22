@@ -181,16 +181,17 @@ Write everything in clear, natural language that's easy to understand.
 
 @app.route('/')
 def index():
-    """API status endpoint - React app runs separately on port 3000."""
+    """API status endpoint."""
     return jsonify({
         'status': 'running',
-        'message': 'Flask API running. Visit http://localhost:3000 for UI.',
+        'message': 'AI Assistant API is running successfully!',
         'api_key_configured': bool(GEMINI_API_KEY),
         'endpoints': [
             '/api/upload',
             '/api/chat',
             '/api/download-pdf',
-            '/api/usage'
+            '/api/usage',
+            '/api/analyze'
         ]
     })
 
