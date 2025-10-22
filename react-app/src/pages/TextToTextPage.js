@@ -2,12 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeftIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { useRecentSearches } from '../context/RecentSearchesContext';
+import { useAuth } from '../context/AuthContext';
 import InsightCard from '../components/InsightCard';
+import FeatureHistory from '../components/FeatureHistory';
 import axios from 'axios';
+import { trackFeatureUsage } from '../utils/analytics';
 
 const TextToTextPage = () => {
   const navigate = useNavigate();
   const { addRecentSearch, getRecentSearches } = useRecentSearches();
+  const { currentUser } = useAuth();
   const [inputText, setInputText] = useState('');
   const [outputText, setOutputText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -39,11 +43,22 @@ const TextToTextPage = () => {
 
       setOutputText(response.data.response);
       setTimestamp(Date.now());
-      
+
       addRecentSearch('TextToText', {
         input: inputText.substring(0, 100) + '...',
         output: response.data.response.substring(0, 100) + '...',
       });
+
+      // Track feature usage with complete data
+      trackFeatureUsage(
+        'text-to-text',
+        'chat',
+        {
+          text: inputText,
+          result: response.data.response
+        },
+        currentUser?.uid
+      );
 
       loadRecentSearches();
     } catch (error) {
@@ -78,7 +93,7 @@ const TextToTextPage = () => {
             Get intelligent AI-powered responses to your questions and prompts
           </p>
         </div>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Side - Insights/Results (2 columns) */}
           <div className="lg:col-span-2 space-y-6">
@@ -148,7 +163,7 @@ const TextToTextPage = () => {
                 placeholder="Enter your question or text here..."
                 className="w-full h-48 px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 resize-none"
               />
-              
+
               <button
                 onClick={handleProcess}
                 disabled={loading || !inputText.trim()}
@@ -180,8 +195,8 @@ const TextToTextPage = () => {
               ) : (
                 <div className="space-y-3 max-h-64 overflow-y-auto">
                   {recentSearches.map((search) => (
-                    <div 
-                      key={search.id} 
+                    <div
+                      key={search.id}
                       className="p-3 bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg border border-gray-200 hover:border-indigo-300 transition-all duration-200 cursor-pointer hover:shadow-md"
                     >
                       <p className="text-gray-700 text-sm truncate font-medium">{search.input}</p>
@@ -198,6 +213,17 @@ const TextToTextPage = () => {
             </div>
           </div>
         </div>
+
+        {/* Feature History */}
+        {currentUser && (
+          <div className="mt-8">
+            <FeatureHistory
+              featureType="text-to-text"
+              featureName="Text to Text"
+              featureColor="blue"
+            />
+          </div>
+        )}
       </div>
     </div>
   );

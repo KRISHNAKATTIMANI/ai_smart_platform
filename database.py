@@ -32,11 +32,25 @@ def init_database():
         )
     ''')
 
+    # User feature usage table (tracks individual user's feature usage)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS user_feature_usage (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            feature_type TEXT NOT NULL,
+            usage_count INTEGER DEFAULT 0,
+            last_used TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, feature_type)
+        )
+    ''')
+
     # User interactions table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS user_interactions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             session_id TEXT NOT NULL,
+            user_id TEXT,
             feature_type TEXT NOT NULL,
             action TEXT NOT NULL,
             data TEXT,
@@ -73,8 +87,8 @@ def init_database():
     print("✅ Database initialized successfully")
 
 
-def track_interaction(session_id, feature_type, action, data=None):
-    """Track user interaction."""
+def track_interaction(session_id, feature_type, action, data=None, user_id=None):
+    """Track user interaction and update feature usage count."""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -94,14 +108,26 @@ def track_interaction(session_id, feature_type, action, data=None):
         # Track interaction
         cursor.execute('''
             INSERT INTO user_interactions
-            (session_id, feature_type, action, data)
-            VALUES (?, ?, ?, ?)
+            (session_id, user_id, feature_type, action, data)
+            VALUES (?, ?, ?, ?, ?)
         ''', (
             session_id,
+            user_id,
             feature_type,
             action,
             json.dumps(data) if data else None
         ))
+
+        # Update feature usage count if user_id is provided
+        if user_id:
+            cursor.execute('''
+                INSERT INTO user_feature_usage (user_id, feature_type, usage_count, last_used)
+                VALUES (?, ?, 1, ?)
+                ON CONFLICT(user_id, feature_type)
+                DO UPDATE SET
+                    usage_count = usage_count + 1,
+                    last_used = ?
+            ''', (user_id, feature_type, datetime.now(), datetime.now()))
 
         conn.commit()
         conn.close()
@@ -111,19 +137,39 @@ def track_interaction(session_id, feature_type, action, data=None):
         return False
 
 
-def get_user_history(session_id, limit=50):
+def get_user_history(session_id, limit=50, user_id=None, feature_type=None):
     """Get user interaction history."""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute('''
-            SELECT feature_type, action, data, created_at
-            FROM user_interactions
-            WHERE session_id = ?
-            ORDER BY created_at DESC
-            LIMIT ?
-        ''', (session_id, limit))
+        if user_id and feature_type:
+            # Get feature-specific history for a user
+            cursor.execute('''
+                SELECT feature_type, action, data, created_at
+                FROM user_interactions
+                WHERE user_id = ? AND feature_type = ?
+                ORDER BY created_at DESC
+                LIMIT ?
+            ''', (user_id, feature_type, limit))
+        elif user_id:
+            # Get all history for a user
+            cursor.execute('''
+                SELECT feature_type, action, data, created_at
+                FROM user_interactions
+                WHERE user_id = ?
+                ORDER BY created_at DESC
+                LIMIT ?
+            ''', (user_id, limit))
+        else:
+            # Get session-based history
+            cursor.execute('''
+                SELECT feature_type, action, data, created_at
+                FROM user_interactions
+                WHERE session_id = ?
+                ORDER BY created_at DESC
+                LIMIT ?
+            ''', (session_id, limit))
 
         rows = cursor.fetchall()
         conn.close()
@@ -212,14 +258,55 @@ def remove_favorite(session_id, favorite_id):
         return False
 
 
-def get_usage_analytics(session_id=None):
+def get_usage_analytics(session_id=None, user_id=None):
     """Get usage analytics and statistics."""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        if session_id:
-            # User-specific analytics
+        # If user_id is provided, get user-specific feature usage
+        if user_id:
+            cursor.execute('''
+                SELECT feature_type, usage_count
+                FROM user_feature_usage
+                WHERE user_id = ?
+                ORDER BY usage_count DESC
+            ''', (user_id,))
+
+            rows = cursor.fetchall()
+
+            # Convert to dictionary with proper feature names
+            analytics = {
+                'textToText': 0,
+                'textToImage': 0,
+                'imageToText': 0,
+                'voiceToText': 0,
+                'textToAudio': 0,
+                'imageEnhance': 0,
+                'outpainting': 0
+            }
+
+            # Map database feature types to frontend keys
+            feature_map = {
+                'text-to-text': 'textToText',
+                'text-to-image': 'textToImage',
+                'image-to-text': 'imageToText',
+                'voice-to-text': 'voiceToText',
+                'text-to-audio': 'textToAudio',
+                'image-enhance': 'imageEnhance',
+                'outpainting': 'outpainting'
+            }
+
+            for row in rows:
+                feature_key = feature_map.get(row['feature_type'])
+                if feature_key:
+                    analytics[feature_key] = row['usage_count']
+
+            conn.close()
+            return analytics
+
+        elif session_id:
+            # Session-specific analytics
             cursor.execute('''
                 SELECT feature_type, COUNT(*) as count
                 FROM user_interactions

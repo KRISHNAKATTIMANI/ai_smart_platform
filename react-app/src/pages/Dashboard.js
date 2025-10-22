@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -12,6 +12,8 @@ import {
   Legend,
 } from 'chart.js';
 import { useRecentSearches } from '../context/RecentSearchesContext';
+import { useAuth } from '../context/AuthContext';
+import { API_BASE_URL } from '../config/api';
 import axios from 'axios';
 
 ChartJS.register(
@@ -26,28 +28,47 @@ ChartJS.register(
 const Dashboard = () => {
   const navigate = useNavigate();
   const { getAllRecentSearches } = useRecentSearches();
+  const { currentUser } = useAuth();
   const [usageData, setUsageData] = useState(null);
   const [recentSearches, setRecentSearches] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadDashboardData();
-  }, []);
+  }, [currentUser]);
 
   const loadDashboardData = async () => {
     try {
-      // Try to fetch usage data from API
-      try {
-        const response = await axios.get('/api/usage');
-        setUsageData(response.data);
-      } catch (error) {
-        // If API not available, use mock data
+      // Fetch user-specific usage data from API
+      if (currentUser && currentUser.uid) {
+        try {
+          const response = await axios.post(`${API_BASE_URL}/api/usage`, {
+            userId: currentUser.uid
+          });
+          setUsageData(response.data);
+        } catch (error) {
+          console.error('Error fetching usage data:', error);
+          // Initialize with zeros for new users
+          setUsageData({
+            textToText: 0,
+            textToImage: 0,
+            imageToText: 0,
+            voiceToText: 0,
+            textToAudio: 0,
+            imageEnhance: 0,
+            outpainting: 0
+          });
+        }
+      } else {
+        // No user logged in, show zeros
         setUsageData({
-          textToText: 45,
-          textToImage: 23,
-          imageToText: 67,
-          voiceToText: 12,
-          textToAudio: 34,
+          textToText: 0,
+          textToImage: 0,
+          imageToText: 0,
+          voiceToText: 0,
+          textToAudio: 0,
+          imageEnhance: 0,
+          outpainting: 0
         });
       }
 
@@ -217,6 +238,29 @@ const Dashboard = () => {
           )}
         </div>
 
+        {/* Welcome message for new users */}
+        {usageData && Object.values(usageData).every(v => v === 0) && (
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-6 mb-8">
+            <div className="flex items-start space-x-4">
+              <div className="flex-shrink-0">
+                <SparklesIcon className="h-8 w-8 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Welcome to Your Dashboard! 🎉
+                </h3>
+                <p className="text-gray-700 mb-3">
+                  Start exploring our AI features and your personalized usage statistics will appear here.
+                  Every feature you use will be tracked and displayed on this dashboard.
+                </p>
+                <p className="text-sm text-gray-600">
+                  Try out features like Text-to-Image, Image-to-Text, Voice-to-Text, and more!
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Chart */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           {chartData && <Bar data={chartData} options={chartOptions} />}
@@ -227,7 +271,7 @@ const Dashboard = () => {
           <h2 className="text-xl font-bold text-gray-900 mb-4">
             Recent Activity (Last 10 Searches)
           </h2>
-          
+
           {recentSearches.length === 0 ? (
             <p className="text-gray-500 text-center py-8">
               No recent activity to display

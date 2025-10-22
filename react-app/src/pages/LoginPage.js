@@ -43,7 +43,20 @@ const LoginPage = () => {
       }
       navigate('/home');
     } catch (error) {
-      setError(error.message);
+      // Provide user-friendly error messages
+      if (error.code === 'auth/operation-not-allowed') {
+        setError('This sign-in method is not enabled. Please contact the administrator.');
+      } else if (error.code === 'auth/email-already-in-use') {
+        setError('This email is already registered. Please login instead.');
+      } else if (error.code === 'auth/weak-password') {
+        setError('Password is too weak. Please use a stronger password.');
+      } else if (error.code === 'auth/user-not-found') {
+        setError('No account found with this email. Please sign up.');
+      } else if (error.code === 'auth/wrong-password') {
+        setError('Incorrect password. Please try again.');
+      } else {
+        setError(error.message || 'An error occurred. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

@@ -2,12 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeftIcon, PhotoIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { useRecentSearches } from '../context/RecentSearchesContext';
+import { useAuth } from '../context/AuthContext';
 import InsightCard from '../components/InsightCard';
+import FeatureHistory from '../components/FeatureHistory';
 import axios from 'axios';
+import { trackFeatureUsage } from '../utils/analytics';
 
 const ImageToTextPage = () => {
   const navigate = useNavigate();
   const { addRecentSearch, getRecentSearches } = useRecentSearches();
+  const { currentUser } = useAuth();
   const [selectedFile, setSelectedFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [extractedText, setExtractedText] = useState('');
@@ -75,6 +79,20 @@ const ImageToTextPage = () => {
         extractedText: fullText.substring(0, 100) + '...',
         prompt: customPrompt || 'Auto Analysis',
       });
+
+      // Track feature usage with complete data
+      trackFeatureUsage(
+        'image-to-text',
+        'analyze',
+        {
+          fileName: selectedFile.name,
+          hasCustomPrompt: !!customPrompt,
+          customPrompt: customPrompt || null,
+          extractedText: fullText,
+          result: result
+        },
+        currentUser?.uid
+      );
 
       loadRecentSearches();
     } catch (error) {
@@ -184,7 +202,7 @@ const ImageToTextPage = () => {
           <div className="lg:col-span-1 space-y-6">
             <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 sticky top-6">
               <h3 className="font-semibold text-gray-900 mb-4 text-lg">Upload Image</h3>
-              
+
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-purple-500 transition-all duration-200 cursor-pointer bg-gradient-to-br from-gray-50 to-purple-50">
                 <input
                   type="file"
@@ -280,6 +298,17 @@ const ImageToTextPage = () => {
             </div>
           </div>
         </div>
+
+        {/* Feature History */}
+        {currentUser && (
+          <div className="mt-8">
+            <FeatureHistory
+              featureType="image-to-text"
+              featureName="Image to Text"
+              featureColor="green"
+            />
+          </div>
+        )}
       </div>
     </div>
   );

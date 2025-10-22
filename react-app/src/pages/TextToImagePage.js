@@ -4,10 +4,14 @@ import { ArrowLeftIcon, SparklesIcon, ArrowDownTrayIcon } from '@heroicons/react
 import axios from 'axios';
 import { API_BASE_URL } from '../config/api';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
+import { trackFeatureUsage } from '../utils/analytics';
+import FeatureHistory from '../components/FeatureHistory';
 
 const TextToImagePage = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { currentUser } = useAuth();
   const [prompt, setPrompt] = useState('');
   const [style, setStyle] = useState('realistic');
   const [size, setSize] = useState('1024x1024');
@@ -37,6 +41,20 @@ const TextToImagePage = () => {
       if (response.data.success) {
         setGeneratedImage(response.data.image_url);
         setEnhancedPrompt(response.data.enhanced_prompt);
+
+        // Track feature usage with complete data
+        trackFeatureUsage(
+          'text-to-image',
+          'generate',
+          {
+            prompt: prompt.trim(),
+            style,
+            size,
+            imageUrl: response.data.image_url,
+            enhancedPrompt: response.data.enhanced_prompt
+          },
+          currentUser?.uid
+        );
       } else {
         setError('Failed to generate image. Please try again.');
       }
@@ -147,7 +165,7 @@ const TextToImagePage = () => {
                   <option value="1920x1080">1920 × 1080 (HD Landscape)</option>
                 </select>
               </div>
-              
+
               <button
                 onClick={generateImage}
                 disabled={loading || !prompt.trim()}
@@ -256,6 +274,17 @@ const TextToImagePage = () => {
             </div>
           </div>
         </div>
+
+        {/* Feature History */}
+        {currentUser && (
+          <div className="mt-8">
+            <FeatureHistory
+              featureType="text-to-image"
+              featureName="Text to Image"
+              featureColor="purple"
+            />
+          </div>
+        )}
       </div>
     </div>
   );
