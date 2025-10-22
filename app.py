@@ -14,6 +14,10 @@ from database import (
     add_favorite, get_favorites, remove_favorite,
     get_usage_analytics, get_recommendations
 )
+from language_detector import (
+    LanguageDetector, UIStrings,
+    process_kannada_text, process_english_text
+)
 from PIL import Image
 import fitz  # PyMuPDF
 from docx import Document
@@ -216,9 +220,55 @@ def index():
             '/api/chat',
             '/api/download-pdf',
             '/api/usage',
-            '/api/analyze'
+            '/api/analyze',
+            '/api/detect-language',
+            '/api/ui-strings'
         ]
     })
+
+
+@app.route('/api/detect-language', methods=['POST'])
+def detect_language():
+    """Detect language of input text."""
+    try:
+        data = request.json
+        text = data.get('text', '')
+
+        if not text:
+            return jsonify({'language': 'en'})
+
+        detected_lang = LanguageDetector.detect_language(text)
+
+        return jsonify({
+            'success': True,
+            'language': detected_lang,
+            'script_name': LanguageDetector.get_script_name(text),
+            'is_kannada': detected_lang == 'kn'
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/ui-strings', methods=['GET'])
+def get_ui_strings():
+    """Get UI strings for a specific language."""
+    try:
+        lang = request.args.get('lang', 'en')
+
+        if lang not in ['en', 'kn']:
+            lang = 'en'
+
+        strings = UIStrings.get_all(lang)
+
+        return jsonify({
+            'success': True,
+            'language': lang,
+            'strings': strings
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/upload', methods=['POST'])
@@ -291,7 +341,7 @@ def analyze_content():
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
-    """Handle general chat messages."""
+    """Handle general chat messages with language detection."""
     try:
         data = request.json
         message = data.get('message', '')
@@ -299,36 +349,40 @@ def chat():
         if not message:
             return jsonify({'error': 'No message provided'}), 400
 
+        # Detect language / ಭಾಷೆ ಪತ್ತೆ
+        detected_lang = LanguageDetector.detect_language(message)
+
+        # Process based on language
+        if detected_lang == 'kn':
+            # Kannada input - ಕನ್ನಡ ಇನ್‌ಪುಟ್
+            processed_message = process_kannada_text(message)
+        else:
+            # English input - ಇಂಗ್ಲಿಷ್ ಇನ್‌ಪುಟ್
+            processed_message = process_english_text(message)
+
         # Re-check API key from environment
         api_key = os.getenv('GEMINI_API_KEY') or GEMINI_API_KEY
         if not api_key:
             return jsonify({'error': 'API key not configured'}), 500
 
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-2.5-flash')
+        model = genai.GenerativeModel('gemini-2.0-flash-exp')
 
-        # Create a friendly, helpful prompt
-        enhanced_prompt = (
-            f"You are a helpful AI assistant. Please answer the "
-            f"following question or respond to the user's message "
-            f"in a clear, friendly, and informative way.\n\n"
-            f"User's message: {message}\n\n"
-            f"Provide a well-formatted, easy-to-read response. "
-            f"Use proper paragraphs and structure your answer clearly."
-        )
-
-        response = model.generate_content(enhanced_prompt)
+        # Use the processed message with language context
+        response = model.generate_content(processed_message)
 
         # Track interaction
         session_id = get_session_id()
         track_interaction(session_id, 'text-to-text', 'chat', {
             'message_length': len(message),
-            'response_length': len(response.text.strip())
+            'response_length': len(response.text.strip()),
+            'language': detected_lang
         })
 
         return jsonify({
             'success': True,
-            'response': response.text.strip()
+            'response': response.text.strip(),
+            'language': detected_lang  # Return detected language
         })
 
     except Exception as e:

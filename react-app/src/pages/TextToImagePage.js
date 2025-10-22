@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeftIcon, SparklesIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import axios from 'axios';
 import { API_BASE_URL } from '../config/api';
+import { useLanguage } from '../context/LanguageContext';
 
 const TextToImagePage = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [prompt, setPrompt] = useState('');
   const [style, setStyle] = useState('realistic');
   const [size, setSize] = useState('1024x1024');
@@ -16,7 +18,7 @@ const TextToImagePage = () => {
 
   const generateImage = async () => {
     if (!prompt.trim()) {
-      setError('Please enter a description for the image');
+      setError(t('no_input') || 'Please enter a description for the image');
       return;
     }
 
@@ -80,17 +82,17 @@ const TextToImagePage = () => {
             className="flex items-center space-x-2 text-gray-600 hover:text-primary transition-colors"
           >
             <ArrowLeftIcon className="w-5 h-5" />
-            <span>Back to Home</span>
+            <span>{t('back_to_home')}</span>
           </button>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Text → Image</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">{t('text_to_image')}</h1>
           <p className="text-gray-600">Generate stunning images from text descriptions using AI.</p>
         </div>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Input Section */}
           <div className="space-y-4">
@@ -102,7 +104,7 @@ const TextToImagePage = () => {
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Describe what you want to see. For example: 'Red sports car on mountain road at sunset' or 'Cute cat wearing sunglasses'"
+                placeholder={t('enter_text')}
                 className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
               />
 
@@ -157,12 +159,12 @@ const TextToImagePage = () => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
-                    <span>Generating...</span>
+                    <span>{t('processing')}</span>
                   </>
                 ) : (
                   <>
                     <SparklesIcon className="w-5 h-5" />
-                    <span>Generate Image</span>
+                    <span>{t('generate')}</span>
                   </>
                 )}
               </button>
@@ -204,9 +206,9 @@ const TextToImagePage = () => {
 
             {/* Tips */}
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
-              <h3 className="font-semibold text-blue-900 mb-2">💡 Tips for Better Results:</h3>
+              <h3 className="font-semibold text-blue-900 mb-2">{t('tips_title')}</h3>
               <ul className="text-sm text-blue-800 space-y-1">
-                <li>• Be specific about subjects, colors, and settings</li>
+                <li>• {t('tip_be_specific')}</li>
                 <li>• Try different styles for various artistic effects</li>
                 <li>• Add details like "at sunset" or "professional photo"</li>
                 <li>• Experiment with image sizes for different uses</li>
@@ -224,7 +226,7 @@ const TextToImagePage = () => {
                   className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                 >
                   <ArrowDownTrayIcon className="w-5 h-5" />
-                  <span>Download</span>
+                  <span>{t('download_pdf') || 'Download'}</span>
                 </button>
               )}
             </div>

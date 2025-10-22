@@ -61,10 +61,15 @@ npm install
 ```bash
 # Windows PowerShell
 $env:GEMINI_API_KEY = "your-api-key-here"
+$env:REPLICATE_API_KEY = "your-replicate-key-here"  # Optional, for image enhancement
 
 # Linux/Mac
 export GEMINI_API_KEY="your-api-key-here"
+export REPLICATE_API_KEY="your-replicate-key-here"  # Optional, for image enhancement
 ```
+
+> 📝 **Note:** Image Enhancement requires a Replicate API key with billing enabled.  
+> See **[REPLICATE_API_SETUP.md](REPLICATE_API_SETUP.md)** for detailed setup instructions.
 
 5. **Start the backend**
 ```bash

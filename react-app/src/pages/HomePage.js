@@ -10,15 +10,17 @@ import {
   ArrowsPointingOutIcon
 } from '@heroicons/react/24/outline';
 import Navbar from '../components/Navbar';
+import { useLanguage } from '../context/LanguageContext';
 
 const HomePage = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const features = [
     {
       id: 'text-to-text',
-      title: 'Text → Text',
-      description: 'AI-powered text analysis and generation',
+      title: t('text_to_text'),
+      description: t('ai_response'),
       icon: DocumentTextIcon,
       path: '/text-to-text',
       color: 'bg-blue-500',
@@ -26,8 +28,8 @@ const HomePage = () => {
     },
     {
       id: 'text-to-image',
-      title: 'Text → Image',
-      description: 'Generate images from text descriptions',
+      title: t('text_to_image'),
+      description: t('generate'),
       icon: PhotoIcon,
       path: '/text-to-image',
       color: 'bg-purple-500',
@@ -35,8 +37,8 @@ const HomePage = () => {
     },
     {
       id: 'image-to-text',
-      title: 'Image → Text',
-      description: 'Extract text and analyze images',
+      title: t('image_to_text'),
+      description: t('extracted_text'),
       icon: CameraIcon,
       path: '/image-to-text',
       color: 'bg-green-500',
@@ -44,8 +46,8 @@ const HomePage = () => {
     },
     {
       id: 'outpainting',
-      title: 'Outpainting & Background Fill',
-      description: 'Expand and clean up images intelligently',
+      title: t('outpainting'),
+      description: t('enhance'),
       icon: SparklesIcon,
       path: '/outpainting',
       color: 'bg-pink-500',
@@ -53,8 +55,8 @@ const HomePage = () => {
     },
     {
       id: 'image-enhance',
-      title: 'AI Image Upscaling',
-      description: 'Enhance quality & increase resolution',
+      title: t('image_enhance'),
+      description: t('enhance'),
       icon: ArrowsPointingOutIcon,
       path: '/image-enhance',
       color: 'bg-orange-500',
@@ -62,8 +64,8 @@ const HomePage = () => {
     },
     {
       id: 'voice-to-text',
-      title: 'Voice → Text',
-      description: 'Convert speech to text',
+      title: t('voice_to_text'),
+      description: t('transcription'),
       icon: MicrophoneIcon,
       path: '/voice-to-text',
       color: 'bg-red-500',
@@ -71,8 +73,8 @@ const HomePage = () => {
     },
     {
       id: 'text-to-audio',
-      title: 'Text → Audio',
-      description: 'Convert text to natural speech',
+      title: t('text_to_audio'),
+      description: t('generate'),
       icon: SpeakerWaveIcon,
       path: '/text-to-audio',
       color: 'bg-yellow-500',
@@ -87,7 +89,7 @@ const HomePage = () => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Welcome to AI Platform
+            {t('welcome')} to AI Platform
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
             Powerful AI tools for text, image, voice, and audio processing.
@@ -107,7 +109,7 @@ const HomePage = () => {
                 {feature.status === 'active' && (
                   <div className="absolute top-3 right-3">
                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      ✓ Active
+                      ✓ {t('success') || 'Active'}
                     </span>
                   </div>
                 )}
