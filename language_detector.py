@@ -155,7 +155,10 @@ class UIStrings:
             'text_to_audio_desc': 'Convert text to natural-sounding speech',
 
             # Page Titles
-            'homepage_title': 'Powerful AI tools for text, image, voice, and audio processing. Choose a feature below to get started.',
+            'homepage_title': (
+                'Powerful AI tools for text, image, voice, and audio '
+                'processing. Choose a feature below to get started.'
+            ),
         },
 
         'kn': {
@@ -242,7 +245,10 @@ class UIStrings:
             'text_to_audio_desc': 'ಪಠ್ಯವನ್ನು ನೈಸರ್ಗಿಕ ಧ್ವನಿಯ ಭಾಷಣಕ್ಕೆ ಪರಿವರ್ತಿಸಿ',
 
             # Page Titles - ಪುಟ ಶೀರ್ಷಿಕೆಗಳು
-            'homepage_title': 'ಪಠ್ಯ, ಚಿತ್ರ, ಧ್ವನಿ ಮತ್ತು ಆಡಿಯೋ ಪ್ರಕ್ರಿಯೆಗಾಗಿ ಶಕ್ತಿಶಾಲಿ AI ಸಾಧನಗಳು. ಪ್ರಾರಂಭಿಸಲು ಕೆಳಗಿನ ವೈಶಿಷ್ಟ್ಯವನ್ನು ಆರಿಸಿ.',
+            'homepage_title': (
+                'ಪಠ್ಯ, ಚಿತ್ರ, ಧ್ವನಿ ಮತ್ತು ಆಡಿಯೋ ಪ್ರಕ್ರಿಯೆಗಾಗಿ ಶಕ್ತಿಶಾಲಿ AI ಸಾಧನಗಳು. '
+                'ಪ್ರಾರಂಭಿಸಲು ಕೆಳಗಿನ ವೈಶಿಷ್ಟ್ಯವನ್ನು ಆರಿಸಿ.'
+            ),
         }
     }
 
