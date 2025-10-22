@@ -1,5 +1,6 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import LoginPage from './pages/LoginPage';
 import HomePage from './pages/HomePage';
 import TextToTextPage from './pages/TextToTextPage';
 import TextToImagePage from './pages/TextToImagePage';
@@ -11,26 +12,107 @@ import ImageEnhancePage from './pages/ImageEnhancePage';
 import Dashboard from './pages/Dashboard';
 import { RecentSearchesProvider } from './context/RecentSearchesContext';
 import { LanguageProvider } from './context/LanguageContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+
+// Protected Route Component
+const ProtectedRoute = ({ children }) => {
+  const { currentUser } = useAuth();
+  return currentUser ? children : <Navigate to="/" />;
+};
+
+function AppRoutes() {
+  const { currentUser } = useAuth();
+
+  return (
+    <Routes>
+      <Route path="/" element={currentUser ? <Navigate to="/home" /> : <LoginPage />} />
+      <Route
+        path="/home"
+        element={
+          <ProtectedRoute>
+            <HomePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/text-to-text"
+        element={
+          <ProtectedRoute>
+            <TextToTextPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/text-to-image"
+        element={
+          <ProtectedRoute>
+            <TextToImagePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/image-to-text"
+        element={
+          <ProtectedRoute>
+            <ImageToTextPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/voice-to-text"
+        element={
+          <ProtectedRoute>
+            <VoiceToTextPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/text-to-audio"
+        element={
+          <ProtectedRoute>
+            <TextToAudioPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/outpainting"
+        element={
+          <ProtectedRoute>
+            <OutpaintingPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/image-enhance"
+        element={
+          <ProtectedRoute>
+            <ImageEnhancePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+    </Routes>
+  );
+}
 
 function App() {
   return (
-    <LanguageProvider>
-      <RecentSearchesProvider>
-        <Router>
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/text-to-text" element={<TextToTextPage />} />
-            <Route path="/text-to-image" element={<TextToImagePage />} />
-            <Route path="/image-to-text" element={<ImageToTextPage />} />
-            <Route path="/voice-to-text" element={<VoiceToTextPage />} />
-            <Route path="/text-to-audio" element={<TextToAudioPage />} />
-            <Route path="/outpainting" element={<OutpaintingPage />} />
-            <Route path="/image-enhance" element={<ImageEnhancePage />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-          </Routes>
-        </Router>
-      </RecentSearchesProvider>
-    </LanguageProvider>
+    <AuthProvider>
+      <LanguageProvider>
+        <RecentSearchesProvider>
+          <Router>
+            <AppRoutes />
+          </Router>
+        </RecentSearchesProvider>
+      </LanguageProvider>
+    </AuthProvider>
   );
 }
 
