@@ -281,7 +281,15 @@ def chat():
 
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel('gemini-2.5-flash')
-        response = model.generate_content(message)
+        
+        # Create a friendly, helpful prompt
+        enhanced_prompt = f"""You are a helpful AI assistant. Please answer the following question or respond to the user's message in a clear, friendly, and informative way.
+
+User's message: {message}
+
+Provide a well-formatted, easy-to-read response. Use proper paragraphs and structure your answer clearly."""
+
+        response = model.generate_content(enhanced_prompt)
 
         return jsonify({
             'success': True,
