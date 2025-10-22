@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeftIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, SparklesIcon, DocumentTextIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline';
 import { useRecentSearches } from '../context/RecentSearchesContext';
 import { useAuth } from '../context/AuthContext';
 import InsightCard from '../components/InsightCard';
@@ -17,6 +17,9 @@ const TextToTextPage = () => {
   const [loading, setLoading] = useState(false);
   const [recentSearches, setRecentSearches] = useState([]);
   const [timestamp, setTimestamp] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [summarizeMode, setSummarizeMode] = useState(false);
+  const [extractedText, setExtractedText] = useState('');
 
   useEffect(() => {
     loadRecentSearches();
@@ -27,7 +30,106 @@ const TextToTextPage = () => {
     setRecentSearches(searches);
   };
 
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Check file size (500MB = 500 * 1024 * 1024 bytes)
+      const maxSize = 500 * 1024 * 1024;
+      if (file.size > maxSize) {
+        alert('File size exceeds 500MB limit. Please select a smaller file.');
+        return;
+      }
+
+      // Check if it's a PDF
+      if (file.type !== 'application/pdf') {
+        alert('Please select a PDF file.');
+        return;
+      }
+
+      setSelectedFile(file);
+      setInputText(''); // Clear text input when file is selected
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setExtractedText('');
+  };
+
+  const handleProcessPDF = async () => {
+    if (!selectedFile) {
+      alert('Please select a PDF file');
+      return;
+    }
+
+    setLoading(true);
+    setOutputText('');
+    setExtractedText('');
+
+    try {
+      // First, upload and extract text from PDF
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      const uploadResponse = await axios.post('/api/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      const { fullText } = uploadResponse.data;
+      setExtractedText(fullText);
+
+      // Then analyze or summarize
+      let prompt = inputText.trim();
+      if (summarizeMode && !prompt) {
+        prompt = 'Please provide a comprehensive summary of this document, highlighting the key points, main ideas, and important details.';
+      } else if (!prompt) {
+        prompt = 'Please analyze this document and provide insights.';
+      }
+
+      const analyzeResponse = await axios.post('/api/chat', {
+        message: `${prompt}\n\nDocument content:\n${fullText}`,
+      });
+
+      setOutputText(analyzeResponse.data.response);
+      setTimestamp(Date.now());
+
+      addRecentSearch('TextToText', {
+        input: `PDF: ${selectedFile.name}${summarizeMode ? ' (Summary)' : ''}`,
+        output: analyzeResponse.data.response.substring(0, 100) + '...',
+      });
+
+      // Track feature usage
+      trackFeatureUsage(
+        'text-to-text',
+        summarizeMode ? 'pdf-summarize' : 'pdf-analyze',
+        {
+          fileName: selectedFile.name,
+          fileSize: selectedFile.size,
+          summarize: summarizeMode,
+          customPrompt: inputText || null,
+          result: analyzeResponse.data.response
+        },
+        currentUser?.uid
+      );
+
+      loadRecentSearches();
+    } catch (error) {
+      console.error('Error processing PDF:', error);
+      alert('Error processing PDF: ' + (error.response?.data?.error || error.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleProcess = async () => {
+    // If file is selected, process PDF instead
+    if (selectedFile) {
+      handleProcessPDF();
+      return;
+    }
+
     if (!inputText.trim()) {
       alert('Please enter some text');
       return;
@@ -157,16 +259,108 @@ const TextToTextPage = () => {
           <div className="lg:col-span-1 space-y-6">
             <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 sticky top-6">
               <h3 className="font-semibold text-gray-900 mb-4 text-lg">Your Input</h3>
-              <textarea
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                placeholder="Enter your question or text here..."
-                className="w-full h-48 px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 resize-none"
+              
+              {/* Tab Selection */}
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={() => {setSelectedFile(null); setExtractedText('');}}
+                  className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${
+                    !selectedFile
+                      ? 'bg-indigo-600 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Text Input
+                </button>
+                <button
+                  onClick={() => document.getElementById('pdf-upload').click()}
+                  className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${
+                    selectedFile
+                      ? 'bg-indigo-600 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  <DocumentTextIcon className="w-5 h-5 inline mr-1" />
+                  PDF Upload
+                </button>
+              </div>
+
+              {/* PDF Upload Section */}
+              {selectedFile ? (
+                <div className="space-y-4">
+                  <div className="border-2 border-indigo-200 bg-indigo-50 rounded-lg p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3 flex-1">
+                        <DocumentTextIcon className="w-8 h-8 text-indigo-600 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-900 truncate">{selectedFile.name}</p>
+                          <p className="text-sm text-gray-500">
+                            {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleRemoveFile}
+                        className="ml-2 text-red-600 hover:text-red-800 font-medium text-sm"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Summarize Toggle */}
+                  <div className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
+                    <span className="text-sm font-medium text-gray-700">Summarize PDF</span>
+                    <button
+                      onClick={() => setSummarizeMode(!summarizeMode)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        summarizeMode ? 'bg-indigo-600' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          summarizeMode ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Optional Custom Prompt */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Custom Question (Optional)
+                    </label>
+                    <textarea
+                      value={inputText}
+                      onChange={(e) => setInputText(e.target.value)}
+                      placeholder={summarizeMode ? "Leave empty for automatic summary..." : "Ask a specific question about the PDF..."}
+                      className="w-full h-24 px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 resize-none text-sm"
+                    />
+                  </div>
+                </div>
+              ) : (
+                /* Text Input Section */
+                <textarea
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  placeholder="Enter your question or text here..."
+                  className="w-full h-48 px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 resize-none"
+                />
+              )}
+
+              {/* Hidden File Input */}
+              <input
+                id="pdf-upload"
+                type="file"
+                accept="application/pdf"
+                onChange={handleFileSelect}
+                className="hidden"
               />
 
+              {/* Process Button */}
               <button
                 onClick={handleProcess}
-                disabled={loading || !inputText.trim()}
+                disabled={loading || (!inputText.trim() && !selectedFile)}
                 className="mt-4 w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-lg hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed flex items-center justify-center space-x-2 font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
               >
                 {loading ? (
@@ -177,10 +371,18 @@ const TextToTextPage = () => {
                 ) : (
                   <>
                     <SparklesIcon className="w-5 h-5" />
-                    <span>Analyze</span>
+                    <span>{selectedFile ? (summarizeMode ? 'Summarize PDF' : 'Analyze PDF') : 'Analyze'}</span>
                   </>
                 )}
               </button>
+
+              {/* File Size Info */}
+              {!selectedFile && (
+                <p className="mt-3 text-xs text-gray-500 text-center">
+                  <DocumentTextIcon className="w-4 h-4 inline mr-1" />
+                  PDF files up to 500MB supported
+                </p>
+              )}
             </div>
 
             <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
