@@ -39,10 +39,8 @@ const OutpaintingPage = () => {
       return;
     }
 
-    if (!prompt.trim()) {
-      setError('Please describe what you want to expand the image with');
-      return;
-    }
+    // Prompt is now optional - will use default if not provided
+    const finalPrompt = prompt.trim() || 'complete the scene naturally with realistic details';
 
     setLoading(true);
     setError('');
@@ -51,7 +49,7 @@ const OutpaintingPage = () => {
     try {
       const formData = new FormData();
       formData.append('image', selectedImage);
-      formData.append('prompt', prompt);
+      formData.append('prompt', finalPrompt);
       formData.append('direction', direction);
 
       const response = await fetch(`${API_BASE_URL}/api/outpaint`, {
@@ -130,7 +128,7 @@ const OutpaintingPage = () => {
             {/* Image Upload */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Upload Image</h3>
-              
+
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-primary transition-colors">
                 <input
                   type="file"
@@ -163,11 +161,11 @@ const OutpaintingPage = () => {
             {/* Prompt Input */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Expansion Prompt</h3>
-              
+
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Describe what you want to add around the image... (e.g., 'complete the elephant body and add a natural savanna background')"
+                placeholder="Optional: Describe what you want to add... (e.g., 'Expand cat and nature background'). Leave empty for automatic AI expansion."
                 className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
               />
 
@@ -194,7 +192,7 @@ const OutpaintingPage = () => {
             {/* Generate Button */}
             <button
               onClick={generateOutpaint}
-              disabled={loading || !selectedImage || !prompt.trim()}
+              disabled={loading || !selectedImage}
               className="w-full px-8 py-4 bg-primary hover:bg-primary-dark text-white font-semibold rounded-lg shadow-md transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
             >
               {loading ? (

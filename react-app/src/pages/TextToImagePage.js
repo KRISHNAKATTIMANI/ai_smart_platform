@@ -32,7 +32,7 @@ const TextToImagePage = () => {
     setEnhancedPrompt('');
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/generate-image`, {
+      const response = await axios.post(`${API_BASE_URL}/api/generate-image`, {
         prompt: prompt.trim(),
         style,
         size

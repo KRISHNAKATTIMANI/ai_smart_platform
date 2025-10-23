@@ -1,4 +1,4 @@
-﻿"""
+"""
 ChatGPT-Style AI Assistant Web App
 Flask backend with file upload, OCR, and intelligent analysis
 """
@@ -349,15 +349,15 @@ def chat():
         if not message:
             return jsonify({'error': 'No message provided'}), 400
 
-        # Detect language / à²­à²¾à²·à³† à²ªà²¤à³à²¤à³†
+        # Detect language / ಭಾಷೆ ಪತ್ತೆ
         detected_lang = LanguageDetector.detect_language(message)
 
         # Process based on language
         if detected_lang == 'kn':
-            # Kannada input - à²•à²¨à³à²¨à²¡ à²‡à²¨à³â€Œà²ªà³à²Ÿà³
+            # Kannada input - ಕನ್ನಡ ಇನ್‌ಪುಟ್
             processed_message = process_kannada_text(message)
         else:
-            # English input - à²‡à²‚à²—à³à²²à²¿à²·à³ à²‡à²¨à³â€Œà²ªà³à²Ÿà³
+            # English input - ಇಂಗ್ಲಿಷ್ ಇನ್‌ಪುಟ್
             processed_message = process_english_text(message)
 
         # Re-check API key from environment
@@ -1171,10 +1171,10 @@ def recommendations():
 
 if __name__ == '__main__':
     print("\n" + "=" * 60)
-    print("ðŸš€ AI Assistant Web App Starting...")
+    print("🚀 AI Assistant Web App Starting...")
     print("=" * 60)
-    print("\nðŸ“ URL: http://localhost:5000")
-    api_status = 'âœ“ Configured' if GEMINI_API_KEY else 'âœ— Missing'
-    print("ðŸ”‘ API Key: {}".format(api_status))
+    print("\n📍 URL: http://localhost:5000")
+    api_status = '✓ Configured' if GEMINI_API_KEY else '✗ Missing'
+    print("🔑 API Key: {}".format(api_status))
     print("\n" + "=" * 60 + "\n")
-    app.run(debug=True, port=5000, use_reloader=False)
+    app.run(debug=True, host="0.0.0.0", port=5000, use_reloader=False)
